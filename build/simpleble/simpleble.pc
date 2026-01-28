@@ -1,7 +1,7 @@
-prefix=C:/Program Files (x86)/SoftionicsHub
-exec_prefix=C:/Program Files (x86)/SoftionicsHub
-libdir=C:/Program Files (x86)/SoftionicsHub/lib
-includedir=C:/Program Files (x86)/SoftionicsHub/include
+prefix=C:/Program Files/SoftionicsHub
+exec_prefix=C:/Program Files/SoftionicsHub
+libdir=C:/Program Files/SoftionicsHub/lib
+includedir=C:/Program Files/SoftionicsHub/include
 
 Name: SimpleBLE
 Description: "The ultimate fully-fledged cross-platform library for Bluetooth Low Energy (BLE)."

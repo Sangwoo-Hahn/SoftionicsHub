@@ -23,3 +23,34 @@ target_link_libraries(hub_core PUBLIC simpleble::simpleble)
 
 add_executable(softionics_hub_cli apps/cli/main.cpp)
 target_link_libraries(softionics_hub_cli PRIVATE hub_core)
+
+
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+find_package(Qt6 REQUIRED COMPONENTS Widgets Charts)
+
+if (WIN32)
+  add_executable(softionics_hub_gui WIN32
+    apps/gui/main.cpp
+    apps/gui/MainWindow.h
+    apps/gui/MainWindow.cpp
+    apps/gui/BleWorker.h
+    apps/gui/BleWorker.cpp
+  )
+else()
+  add_executable(softionics_hub_gui
+    apps/gui/main.cpp
+    apps/gui/MainWindow.h
+    apps/gui/MainWindow.cpp
+    apps/gui/BleWorker.h
+    apps/gui/BleWorker.cpp
+  )
+endif()
+
+target_link_libraries(softionics_hub_gui PRIVATE
+  Qt6::Widgets
+  Qt6::Charts
+  hub_core
+)

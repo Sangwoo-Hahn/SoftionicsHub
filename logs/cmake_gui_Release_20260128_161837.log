@@ -1,0 +1,784 @@
+MODE=gui
+CFG=Release
+QT_KIT=C:\Qt\6.10.1\msvc2022_64
+Qt6_DIR=C:\Qt\6.10.1\msvc2022_64\lib\cmake\Qt6
+BUILD_DIR=C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui
+
+--------------------------------------------------
+Running: git submodule update --init --recursive
+--------------------------------------------------
+Running: cmake -S . -B "C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui" -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="C:\Qt\6.10.1\msvc2022_64" -DQt6_DIR="C:\Qt\6.10.1\msvc2022_64\lib\cmake\Qt6"
+-- Windows Host Detected
+-- Applying definition: SIMPLEBLE_LOG_LEVEL=SIMPLEBLE_LOG_LEVEL_INFO
+-- Applying definition: SIMPLEBLE_VERSION="0.11.0"
+-- Applying definition: FMT_HEADER_ONLY
+-- Applying definition: /D_WIN32_WINNT=0x0A00
+-- Applying definition: /D_USE_MATH_DEFINES
+-- Applying private compile option: /utf-8
+-- Applying private compile option: /Gd
+-- Applying private compile option: /EHsc
+-- Applying private compile option: /WX
+-- Applying private compile option: /W1
+-- Applying definition: SIMPLEBLE_LOG_LEVEL=SIMPLEBLE_LOG_LEVEL_INFO
+-- Applying definition: SIMPLEBLE_VERSION="0.11.0"
+-- Applying definition: FMT_HEADER_ONLY
+-- Applying definition: /D_WIN32_WINNT=0x0A00
+-- Applying definition: /D_USE_MATH_DEFINES
+-- Applying private compile option: /utf-8
+-- Applying private compile option: /Gd
+-- Applying private compile option: /EHsc
+-- Applying private compile option: /WX
+-- Applying private compile option: /W1
+-- Could NOT find WrapVulkanHeaders (missing: Vulkan_INCLUDE_DIR) 
+-- Could NOT find WrapVulkanHeaders (missing: Vulkan_INCLUDE_DIR) 
+-- Configuring done (0.2s)
+-- Generating done (2.2s)
+-- Build files have been written to: C:/Users/sangw/OneDrive/_softionics/_Programming/2026/SoftionicsHub/build_gui
+--------------------------------------------------
+Running: cmake --build "C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui" --config Release --target softionics_hub_gui
+msbuild 버전 17.14.23+b0019275e(.NET Framework용)
+
+  simpleble.vcxproj -> C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\simpleble\Release\simpleble.lib
+  hub_core.vcxproj -> C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\Release\hub_core.lib
+  Automatic MOC and UIC for target softionics_hub_gui
+  main.cpp
+  MainWindow.cpp
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(152,19): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_destructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/main.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(152,19):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\BleWorker.h(83,34):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::optional<std::ofstream>'에 대한 참조를 확인하세요.
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(227,26):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(159,22):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control_move_assign<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(152,19):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_trivially_destructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_trivially_move_constructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_trivially_move_assignable<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(115,19): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_destructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/main.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(115,19):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(154,9):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control_copy_assign<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(115,19):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_trivially_destructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_trivially_copy_constructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_trivially_copy_assignable<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(80,19): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/main.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(80,19):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(117,9):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control_move<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(80,19):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_trivially_move_constructible<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(48,41): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/main.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(48,41):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(80,78):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control_copy<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(48,41):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_trivially_copy_constructible<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(49,19): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/main.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(49,19):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(49,19):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_copy_constructible<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(81,23): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/main.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(81,23):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(81,23):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_move_constructible<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(118,23): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/main.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(118,23):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(118,23):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_copy_constructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_copy_assignable<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(155,23): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/main.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(155,23):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(155,23):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_move_constructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_move_assignable<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(69,29): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_destructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/main.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(69,29):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(227,26):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Deleted_move_assign<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(139,31):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Deleted_copy_assign<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(102,31):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Deleted_move<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(67,24):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Deleted_copy<std::_Optional_construct_base<_Ty>>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(37,24):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Optional_construct_base<_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(69,29):
+          컴파일되는 변수 템플릿 'const bool is_trivially_destructible_v<std::basic_ofstream<char,std::char_traits<char> > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079: 'std::_Optional_destruct_base<_Ty,false>::_Value'은(는) 정의되지 않은 class 'std::basic_ofstream<char,std::char_traits<char>>'을(를) 사용합니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079:         with [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079:         [ [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079:             _Ty=std::ofstream [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079:         ] [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/main.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(148,35):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Optional_destruct_base<_Ty,false>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(244,39): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_destructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/main.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(244,39):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(244,39):
+          컴파일되는 변수 템플릿 'const bool is_destructible_v<std::basic_ofstream<char,std::char_traits<char> > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(244,62): error C2338: static_assert failed: 'T in optional<T> must meet the Cpp17Destructible requirements (N4950 [optional.optional.general]/3).' [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/main.cpp'을(를) 컴파일하는 중)
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(152,19): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_destructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/MainWindow.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(152,19):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\BleWorker.h(83,34):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::optional<std::ofstream>'에 대한 참조를 확인하세요.
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(227,26):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(159,22):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control_move_assign<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(152,19):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_trivially_destructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_trivially_move_constructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_trivially_move_assignable<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(115,19): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_destructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/MainWindow.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(115,19):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(154,9):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control_copy_assign<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(115,19):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_trivially_destructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_trivially_copy_constructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_trivially_copy_assignable<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(80,19): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/MainWindow.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(80,19):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(117,9):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control_move<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(80,19):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_trivially_move_constructible<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(48,41): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/MainWindow.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(48,41):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(80,78):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control_copy<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(48,41):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_trivially_copy_constructible<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(49,19): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/MainWindow.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(49,19):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(49,19):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_copy_constructible<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(81,23): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/MainWindow.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(81,23):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(81,23):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_move_constructible<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(118,23): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/MainWindow.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(118,23):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(118,23):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_copy_constructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_copy_assignable<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(155,23): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/MainWindow.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(155,23):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(155,23):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_move_constructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_move_assignable<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(69,29): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_destructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/MainWindow.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(69,29):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(227,26):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Deleted_move_assign<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(139,31):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Deleted_copy_assign<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(102,31):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Deleted_move<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(67,24):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Deleted_copy<std::_Optional_construct_base<_Ty>>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(37,24):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Optional_construct_base<_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(69,29):
+          컴파일되는 변수 템플릿 'const bool is_trivially_destructible_v<std::basic_ofstream<char,std::char_traits<char> > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079: 'std::_Optional_destruct_base<_Ty,false>::_Value'은(는) 정의되지 않은 class 'std::basic_ofstream<char,std::char_traits<char>>'을(를) 사용합니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079:         with [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079:         [ [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079:             _Ty=std::ofstream [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079:         ] [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/MainWindow.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(148,35):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Optional_destruct_base<_Ty,false>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(244,39): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_destructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/MainWindow.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(244,39):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(244,39):
+          컴파일되는 변수 템플릿 'const bool is_destructible_v<std::basic_ofstream<char,std::char_traits<char> > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(244,62): error C2338: static_assert failed: 'T in optional<T> must meet the Cpp17Destructible requirements (N4950 [optional.optional.general]/3).' [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/MainWindow.cpp'을(를) 컴파일하는 중)
+  
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(99,19): error C2872: 'QLineSeries': 모호한 기호입니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+      C:\Qt\6.10.1\msvc2022_64\include\QtCharts\qlineseries.h(16,23):
+      'QLineSeries'일 수 있습니다.
+      C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.h(19,46):
+      또는       'QtCharts::QLineSeries'
+  
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(99,30): error C2440: '=': 'QLineSeries *'에서 'QtCharts::QLineSeries *'(으)로 변환할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+      C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(99,30):
+      가리킨 형식이 관련이 없습니다. 변환하려면 reinterpret_cast, C 스타일 캐스트 또는 괄호가 있는 함수 스타일 캐스트가 필요합니다.
+  
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(101,12): error C2664: 'void QChart::addSeries(QAbstractSeries *)': 인수 1을(를) 'QtCharts::QLineSeries *'에서 'QAbstractSeries *'(으)로 변환할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+      C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(101,22):
+      가리킨 형식이 관련이 없습니다. 변환하려면 reinterpret_cast, C 스타일 캐스트 또는 괄호가 있는 함수 스타일 캐스트가 필요합니다.
+      C:\Qt\6.10.1\msvc2022_64\include\QtCharts\qchart.h(76,10):
+      'QChart::addSeries' 선언을 참조하십시오.
+      C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(101,12):
+      인수 목록 '(QtCharts::QLineSeries *)'을(를) 일치시키는 동안
+  
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(108,5): error C2027: 정의되지 않은 형식 'QtCharts::QLineSeries'을(를) 사용했습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+      C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.h(19,46):
+      'QtCharts::QLineSeries' 선언을 참조하십시오.
+  
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(109,5): error C2027: 정의되지 않은 형식 'QtCharts::QLineSeries'을(를) 사용했습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+      C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.h(19,46):
+      'QtCharts::QLineSeries' 선언을 참조하십시오.
+  
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(111,22): error C2872: 'QChartView': 모호한 기호입니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+      C:\Qt\6.10.1\msvc2022_64\include\QtCharts\qchartview.h(21,23):
+      'QChartView'일 수 있습니다.
+      C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.h(19,28):
+      또는       'QtCharts::QChartView'
+  
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(111,32): error C2440: '=': 'QChartView *'에서 'QtCharts::QChartView *'(으)로 변환할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+      C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(111,32):
+      가리킨 형식이 관련이 없습니다. 변환하려면 reinterpret_cast, C 스타일 캐스트 또는 괄호가 있는 함수 스타일 캐스트가 필요합니다.
+  
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(112,12): error C2664: 'void QBoxLayout::addWidget(QWidget *,int,Qt::Alignment)': 인수 1을(를) 'QtCharts::QChartView *'에서 'QWidget *'(으)로 변환할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+      C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(112,22):
+      가리킨 형식이 관련이 없습니다. 변환하려면 reinterpret_cast, C 스타일 캐스트 또는 괄호가 있는 함수 스타일 캐스트가 필요합니다.
+      C:\Qt\6.10.1\msvc2022_64\include\QtWidgets\qboxlayout.h(39,10):
+      'QBoxLayout::addWidget' 선언을 참조하십시오.
+      C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(112,12):
+      인수 목록 '(QtCharts::QChartView *)'을(를) 일치시키는 동안
+  
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(386,5): error C2027: 정의되지 않은 형식 'QtCharts::QLineSeries'을(를) 사용했습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+      C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.h(19,46):
+      'QtCharts::QLineSeries' 선언을 참조하십시오.
+  
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(388,19): error C2027: 정의되지 않은 형식 'QtCharts::QChartView'을(를) 사용했습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+      C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.h(19,28):
+      'QtCharts::QChartView' 선언을 참조하십시오.
+  
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(389,30): error C3536: 'chart': 초기화되기 전에 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(395,9): error C3536: 'axX': 초기화되기 전에 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\MainWindow.cpp(404,9): error C3536: 'axY': 초기화되기 전에 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  BleWorker.cpp
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(152,19): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_destructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/BleWorker.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(152,19):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\BleWorker.h(83,34):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::optional<std::ofstream>'에 대한 참조를 확인하세요.
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(227,26):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(159,22):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control_move_assign<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(152,19):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_trivially_destructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_trivially_move_constructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_trivially_move_assignable<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(115,19): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_destructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/BleWorker.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(115,19):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(154,9):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control_copy_assign<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(115,19):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_trivially_destructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_trivially_copy_constructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_trivially_copy_assignable<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(80,19): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/BleWorker.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(80,19):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(117,9):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control_move<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(80,19):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_trivially_move_constructible<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(48,41): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/BleWorker.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(48,41):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(80,78):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control_copy<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(48,41):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_trivially_copy_constructible<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(49,19): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/BleWorker.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(49,19):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(49,19):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_copy_constructible<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(81,23): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/BleWorker.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(81,23):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(81,23):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_move_constructible<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(118,23): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/BleWorker.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(118,23):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(118,23):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_copy_constructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_copy_assignable<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(155,23): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/BleWorker.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(155,23):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(155,23):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_move_constructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_move_assignable<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(69,29): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_destructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/BleWorker.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(69,29):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(227,26):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Deleted_move_assign<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(139,31):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Deleted_copy_assign<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(102,31):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Deleted_move<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(67,24):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Deleted_copy<std::_Optional_construct_base<_Ty>>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(37,24):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Optional_construct_base<_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(69,29):
+          컴파일되는 변수 템플릿 'const bool is_trivially_destructible_v<std::basic_ofstream<char,std::char_traits<char> > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079: 'std::_Optional_destruct_base<_Ty,false>::_Value'은(는) 정의되지 않은 class 'std::basic_ofstream<char,std::char_traits<char>>'을(를) 사용합니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079:         with [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079:         [ [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079:             _Ty=std::ofstream [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079:         ] [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/BleWorker.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(148,35):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Optional_destruct_base<_Ty,false>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(244,39): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_destructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/BleWorker.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(244,39):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(244,39):
+          컴파일되는 변수 템플릿 'const bool is_destructible_v<std::basic_ofstream<char,std::char_traits<char> > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(244,62): error C2338: static_assert failed: 'T in optional<T> must meet the Cpp17Destructible requirements (N4950 [optional.optional.general]/3).' [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 '../apps/gui/BleWorker.cpp'을(를) 컴파일하는 중)
+  
+  mocs_compilation_Release.cpp
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(152,19): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_destructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 'softionics_hub_gui_autogen/mocs_compilation_Release.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(152,19):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\apps\gui\BleWorker.h(83,34):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::optional<std::ofstream>'에 대한 참조를 확인하세요.
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(227,26):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(159,22):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control_move_assign<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(152,19):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_trivially_destructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_trivially_move_constructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_trivially_move_assignable<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(115,19): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_destructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 'softionics_hub_gui_autogen/mocs_compilation_Release.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(115,19):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(154,9):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control_copy_assign<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(115,19):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_trivially_destructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_trivially_copy_constructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_trivially_copy_assignable<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(80,19): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 'softionics_hub_gui_autogen/mocs_compilation_Release.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(80,19):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(117,9):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control_move<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(80,19):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_trivially_move_constructible<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(48,41): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 'softionics_hub_gui_autogen/mocs_compilation_Release.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(48,41):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(80,78):
+          컴파일되는 별칭 템플릿 인스턴스화 'std::_SMF_control_copy<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(48,41):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_trivially_copy_constructible<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(49,19): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 'softionics_hub_gui_autogen/mocs_compilation_Release.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(49,19):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(49,19):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_copy_constructible<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(81,23): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 'softionics_hub_gui_autogen/mocs_compilation_Release.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(81,23):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(81,23):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_move_constructible<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(118,23): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 'softionics_hub_gui_autogen/mocs_compilation_Release.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(118,23):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(118,23):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_copy_constructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_copy_assignable<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(155,23): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_constructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 'softionics_hub_gui_autogen/mocs_compilation_Release.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(155,23):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(155,23):
+          컴파일되는 변수 템플릿 'const bool conjunction_v<std::is_move_constructible<std::basic_ofstream<char,std::char_traits<char> > >,std::is_move_assignable<std::basic_ofstream<char,std::char_traits<char> > > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(69,29): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_trivially_destructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 'softionics_hub_gui_autogen/mocs_compilation_Release.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(69,29):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(227,26):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Deleted_move_assign<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(139,31):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Deleted_copy_assign<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(102,31):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Deleted_move<std::_Optional_construct_base<_Ty>,_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(67,24):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Deleted_copy<std::_Optional_construct_base<_Ty>>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\xsmf_control.h(37,24):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Optional_construct_base<_Ty>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(69,29):
+          컴파일되는 변수 템플릿 'const bool is_trivially_destructible_v<std::basic_ofstream<char,std::char_traits<char> > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079: 'std::_Optional_destruct_base<_Ty,false>::_Value'은(는) 정의되지 않은 class 'std::basic_ofstream<char,std::char_traits<char>>'을(를) 사용합니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079:         with [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079:         [ [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079:             _Ty=std::ofstream [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26): error C2079:         ] [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 'softionics_hub_gui_autogen/mocs_compilation_Release.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(103,26):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(148,35):
+          컴파일되는 클래스 템플릿 인스턴스화 'std::_Optional_destruct_base<_Ty,false>'에 대한 참조를 확인하세요.
+          with
+          [
+              _Ty=std::ofstream
+          ]
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(244,39): error C2139: 'std::basic_ofstream<char,std::char_traits<char>>': 정의되지 않은 클래스는 컴파일러 내장 형식 특성 '__is_destructible'에 대한 인수로 사용할 수 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 'softionics_hub_gui_autogen/mocs_compilation_Release.cpp'을(를) 컴파일하는 중)
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\iosfwd(207,7):
+      'std::basic_ofstream<char,std::char_traits<char>>' 선언을 참조하십시오.
+      C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(244,39):
+      템플릿 인스턴스화 컨텍스트(가장 오래된 인스턴스화 컨텍스트)가
+          C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(244,39):
+          컴파일되는 변수 템플릿 'const bool is_destructible_v<std::basic_ofstream<char,std::char_traits<char> > >'에 대한 참조를 확인하세요.
+  
+C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\include\optional(244,62): error C2338: static_assert failed: 'T in optional<T> must meet the Cpp17Destructible requirements (N4950 [optional.optional.general]/3).' [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  (소스 파일 'softionics_hub_gui_autogen/mocs_compilation_Release.cpp'을(를) 컴파일하는 중)
+  
+  코드를 생성하고 있습니다...
+FAILED: cmake --build "C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui" --config Release --target softionics_hub_gui
