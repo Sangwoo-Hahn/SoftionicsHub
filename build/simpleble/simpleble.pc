@@ -1,0 +1,11 @@
+prefix=C:/Program Files (x86)/SoftionicsHub
+exec_prefix=C:/Program Files (x86)/SoftionicsHub
+libdir=C:/Program Files (x86)/SoftionicsHub/lib
+includedir=C:/Program Files (x86)/SoftionicsHub/include
+
+Name: SimpleBLE
+Description: "The ultimate fully-fledged cross-platform library for Bluetooth Low Energy (BLE)."
+Version: 0.11.0
+Libs: -L${libdir} -lsimpleble 
+Cflags: -I${includedir}
+Conflicts:
