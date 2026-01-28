@@ -14,14 +14,32 @@ void Pipeline::reset() {
 
 void Pipeline::set_config(const PipelineConfig& cfg) {
     cfg_ = cfg;
-    if (n_ch_ > 0) {
+    if (n_ch_ == 0) return;
+
+    if (!ma_.ready() || ma_.win_len() != cfg_.ma_win) {
         ma_.configure(n_ch_, cfg_.ma_win);
-        ema_.configure(n_ch_, cfg_.ema_alpha);
-        notch_.configure(n_ch_, cfg_.fs_hz, cfg_.notch_f0, cfg_.notch_q);
-        bias_.configure(n_ch_);
-        model_.configure(n_ch_);
-        model_.set_bias(cfg_.model_bias);
     }
+
+    if (!ema_.ready()) {
+        ema_.configure(n_ch_, cfg_.ema_alpha);
+    } else {
+        ema_.set_alpha(cfg_.ema_alpha);
+    }
+
+    if (!notch_.ready()) {
+        notch_.configure(n_ch_, cfg_.fs_hz, cfg_.notch_f0, cfg_.notch_q);
+    } else {
+        notch_.set_params(cfg_.fs_hz, cfg_.notch_f0, cfg_.notch_q);
+    }
+
+    if (bias_.bias().size() != n_ch_) {
+        bias_.configure(n_ch_);
+    }
+
+    if (!model_.ready()) {
+        model_.configure(n_ch_);
+    }
+    model_.set_bias(cfg_.model_bias);
 }
 
 void Pipeline::ensure_initialized(size_t n_ch) {

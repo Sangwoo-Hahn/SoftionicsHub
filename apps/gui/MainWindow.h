@@ -35,6 +35,7 @@ private slots:
     void onDisconnected();
     void onFrame(qulonglong t_ns, QVector<float> x, bool modelValid, float modelOut);
     void onStats(qulonglong ok, qulonglong bad);
+    void onBiasState(bool hasBias, bool capturing);
 
     void onDeviceDoubleClicked(QListWidgetItem*);
 
@@ -51,7 +52,6 @@ private slots:
 private:
     void buildUi();
     void rebuildPlot(int n_ch);
-
     hub::PipelineConfig readCfgFromUi() const;
     void updateDeviceListDecor();
 
@@ -83,10 +83,10 @@ private:
     QDoubleSpinBox* sp_f0_ = nullptr;
     QDoubleSpinBox* sp_q_ = nullptr;
 
-    QCheckBox* cb_bias_ = nullptr;
+    QCheckBox* cb_bias_apply_ = nullptr;
     QSpinBox* sp_bias_frames_ = nullptr;
     QPushButton* btn_bias_cap_ = nullptr;
-    QLabel* biasInfo_ = nullptr;
+    QLabel* lb_bias_state_ = nullptr;
 
     QCheckBox* cb_model_ = nullptr;
     QDoubleSpinBox* sp_model_bias_ = nullptr;
@@ -101,6 +101,7 @@ private:
     QChart* chart_ = nullptr;
     QValueAxis* axX_ = nullptr;
     QValueAxis* axY_ = nullptr;
+    QLineSeries* centerLine_ = nullptr;
 
     QVector<QLineSeries*> series_;
     QVector<QList<QPointF>> buffers_;

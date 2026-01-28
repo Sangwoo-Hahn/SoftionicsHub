@@ -139,7 +139,11 @@ void BleWorker::connectToIndex(int index) {
             QMutexLocker lk(&pipeMu_);
             pipe_.reset();
             pipe_.set_config(cfg_);
+            lastBiasHas_ = pipe_.bias_has();
+            lastBiasCapturing_ = pipe_.bias_capturing();
         }
+
+        emit biasStateChanged(lastBiasHas_, lastBiasCapturing_);
 
         n_ch_.store(0);
         ok_.store(0);
@@ -171,6 +175,13 @@ void BleWorker::disconnectDevice() {
 
     stopCsv();
 
+    {
+        QMutexLocker lk(&pipeMu_);
+        lastBiasHas_ = false;
+        lastBiasCapturing_ = false;
+    }
+    emit biasStateChanged(false, false);
+
     emit disconnected();
     emit statusText("Scanning...");
 }
@@ -200,6 +211,9 @@ void BleWorker::notifyStart() {
                     pipe_.set_model_weights(weights_);
                     weightsPending_.store(false);
                 }
+                lastBiasHas_ = pipe_.bias_has();
+                lastBiasCapturing_ = pipe_.bias_capturing();
+                emit biasStateChanged(lastBiasHas_, lastBiasCapturing_);
             }
 
             if (n_ch_.load() != n) { bad_.fetch_add(1); continue; }
@@ -207,9 +221,21 @@ void BleWorker::notifyStart() {
             uint64_t t = now_ns();
 
             hub::PipelineOut out;
+            bool cap = false;
+            bool has = false;
+
             {
                 QMutexLocker lk(&pipeMu_);
                 out = pipe_.process(t, *v);
+                cap = pipe_.bias_capturing();
+                has = pipe_.bias_has();
+            }
+
+            if (cap != lastBiasCapturing_ || has != lastBiasHas_) {
+                QMutexLocker lk(&pipeMu_);
+                lastBiasCapturing_ = cap;
+                lastBiasHas_ = has;
+                emit biasStateChanged(lastBiasHas_, lastBiasCapturing_);
             }
 
             ok_.fetch_add(1);
@@ -252,15 +278,34 @@ void BleWorker::notifyStop() {
 }
 
 void BleWorker::setPipelineConfig(hub::PipelineConfig cfg) {
-    QMutexLocker lk(&pipeMu_);
-    cfg_ = cfg;
-    pipe_.set_config(cfg_);
+    bool cap = false;
+    bool has = false;
+    {
+        QMutexLocker lk(&pipeMu_);
+        cfg_ = cfg;
+        pipe_.set_config(cfg_);
+        cap = pipe_.bias_capturing();
+        has = pipe_.bias_has();
+        lastBiasCapturing_ = cap;
+        lastBiasHas_ = has;
+    }
+    emit biasStateChanged(has, cap);
 }
 
 void BleWorker::startBiasCapture(int frames) {
     if (n_ch_.load() == 0) return;
-    QMutexLocker lk(&pipeMu_);
-    pipe_.begin_bias_capture((size_t)std::max(frames, 1));
+
+    bool cap = false;
+    bool has = false;
+    {
+        QMutexLocker lk(&pipeMu_);
+        pipe_.begin_bias_capture((size_t)std::max(frames, 1));
+        cap = pipe_.bias_capturing();
+        has = pipe_.bias_has();
+        lastBiasCapturing_ = cap;
+        lastBiasHas_ = has;
+    }
+    emit biasStateChanged(has, cap);
     emit statusText("Bias capture started");
 }
 

@@ -20,6 +20,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     connect(worker_, &BleWorker::disconnected, this, &MainWindow::onDisconnected);
     connect(worker_, &BleWorker::frameReady, this, &MainWindow::onFrame);
     connect(worker_, &BleWorker::statsUpdated, this, &MainWindow::onStats);
+    connect(worker_, &BleWorker::biasStateChanged, this, &MainWindow::onBiasState);
 
     buildUi();
 
@@ -34,7 +35,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     connect(applyTimer_, &QTimer::timeout, this, &MainWindow::applyPipelineNow);
 
     QMetaObject::invokeMethod(worker_, [w = worker_]() { w->startAuto("Softionics"); }, Qt::QueuedConnection);
-
     applyPipelineNow();
 }
 
@@ -52,13 +52,14 @@ void MainWindow::buildUi() {
     auto* root = new QHBoxLayout(central);
 
     auto* split = new QSplitter(Qt::Horizontal, central);
+    split->setChildrenCollapsible(false);
 
     auto* devPanel = new QWidget(split);
+    devPanel->setMinimumWidth(280);
     auto* devL = new QVBoxLayout(devPanel);
 
-    auto* devTitle = new QLabel("Devices (double-click to connect)", devPanel);
+    auto* devTitle = new QLabel("Devices (double-click)", devPanel);
     QFont titleFont = devTitle->font();
-    titleFont.setPointSize(titleFont.pointSize() + 1);
     titleFont.setBold(true);
     devTitle->setFont(titleFont);
 
@@ -81,6 +82,7 @@ void MainWindow::buildUi() {
     split->addWidget(devPanel);
 
     auto* chartPanel = new QWidget(split);
+    chartPanel->setMinimumWidth(700);
     auto* chartL = new QVBoxLayout(chartPanel);
 
     chart_ = new QChart();
@@ -94,13 +96,26 @@ void MainWindow::buildUi() {
     chart_->addAxis(axX_, Qt::AlignBottom);
     chart_->addAxis(axY_, Qt::AlignLeft);
 
+    centerLine_ = new QLineSeries(chart_);
+    chart_->addSeries(centerLine_);
+    centerLine_->attachAxis(axX_);
+    centerLine_->attachAxis(axY_);
+    auto pen = centerLine_->pen();
+    pen.setWidthF(1.0);
+    pen.setStyle(Qt::DashLine);
+    auto c = pen.color();
+    c.setAlpha(140);
+    pen.setColor(c);
+    centerLine_->setPen(pen);
+
     chartView_ = new QChartView(chart_, chartPanel);
     chartView_->setRenderHint(QPainter::Antialiasing, true);
-    chartL->addWidget(chartView_, 1);
 
+    chartL->addWidget(chartView_, 1);
     split->addWidget(chartPanel);
 
     auto* ctrlPanel = new QWidget(split);
+    ctrlPanel->setMinimumWidth(360);
     auto* ctrlL = new QVBoxLayout(ctrlPanel);
 
     auto* gPlot = new QGroupBox("Plot", ctrlPanel);
@@ -205,17 +220,20 @@ void MainWindow::buildUi() {
 
     auto* rowBias = new QWidget(gBias);
     auto* rowBiasL = new QHBoxLayout(rowBias);
-    cb_bias_ = new QCheckBox("Apply", rowBias);
+    cb_bias_apply_ = new QCheckBox("Apply stored bias", rowBias);
     sp_bias_frames_ = new QSpinBox(rowBias);
     sp_bias_frames_->setRange(1, 2000000);
     sp_bias_frames_->setValue(200);
     btn_bias_cap_ = new QPushButton("Capture", rowBias);
     connect(btn_bias_cap_, &QPushButton::clicked, this, &MainWindow::onBiasCapture);
-    rowBiasL->addWidget(cb_bias_);
+    rowBiasL->addWidget(cb_bias_apply_);
     rowBiasL->addWidget(sp_bias_frames_);
     rowBiasL->addWidget(btn_bias_cap_);
     rowBiasL->addStretch(1);
     bL->addWidget(rowBias);
+
+    lb_bias_state_ = new QLabel("State: None", gBias);
+    bL->addWidget(lb_bias_state_);
 
     ctrlL->addWidget(gBias);
 
@@ -260,10 +278,15 @@ void MainWindow::buildUi() {
     rL->addWidget(rowRec);
 
     ctrlL->addWidget(gRec);
-
     ctrlL->addStretch(1);
 
     auto applyHook = [this]() { onAnyControlChanged(); };
+
+    connect(sp_xwin_, &QDoubleSpinBox::valueChanged, this, applyHook);
+    connect(sp_ycenter_, &QDoubleSpinBox::valueChanged, this, applyHook);
+    connect(sp_yabs_, &QDoubleSpinBox::valueChanged, this, applyHook);
+    connect(cb_yauto_, &QCheckBox::toggled, this, applyHook);
+
     connect(cb_ma_, &QCheckBox::toggled, this, applyHook);
     connect(sp_ma_, &QSpinBox::valueChanged, this, applyHook);
     connect(cb_ema_, &QCheckBox::toggled, this, applyHook);
@@ -272,21 +295,23 @@ void MainWindow::buildUi() {
     connect(sp_fs_, &QDoubleSpinBox::valueChanged, this, applyHook);
     connect(sp_f0_, &QDoubleSpinBox::valueChanged, this, applyHook);
     connect(sp_q_, &QDoubleSpinBox::valueChanged, this, applyHook);
-    connect(cb_bias_, &QCheckBox::toggled, this, applyHook);
+
+    connect(cb_bias_apply_, &QCheckBox::toggled, this, applyHook);
+
     connect(cb_model_, &QCheckBox::toggled, this, applyHook);
     connect(sp_model_bias_, &QDoubleSpinBox::valueChanged, this, applyHook);
 
     split->addWidget(ctrlPanel);
 
-    split->setStretchFactor(0, 1);
-    split->setStretchFactor(1, 3);
-    split->setStretchFactor(2, 1);
+    split->setStretchFactor(0, 2);
+    split->setStretchFactor(1, 12);
+    split->setStretchFactor(2, 3);
 
     root->addWidget(split);
     setCentralWidget(central);
 
     setWindowTitle("SoftionicsHub");
-    resize(1500, 850);
+    resize(1600, 900);
 }
 
 hub::PipelineConfig MainWindow::readCfgFromUi() const {
@@ -299,7 +324,7 @@ hub::PipelineConfig MainWindow::readCfgFromUi() const {
     cfg.fs_hz = sp_fs_->value();
     cfg.notch_f0 = sp_f0_->value();
     cfg.notch_q = sp_q_->value();
-    cfg.enable_bias = cb_bias_->isChecked();
+    cfg.enable_bias = cb_bias_apply_->isChecked();
     cfg.enable_model = cb_model_->isChecked();
     cfg.model_bias = (float)sp_model_bias_->value();
     return cfg;
@@ -394,6 +419,13 @@ void MainWindow::onStats(qulonglong ok, qulonglong bad) {
     stats_->setText(QString("ok=%1 bad=%2").arg(ok).arg(bad));
 }
 
+void MainWindow::onBiasState(bool hasBias, bool capturing) {
+    if (!lb_bias_state_) return;
+    if (capturing) lb_bias_state_->setText("State: Capturing");
+    else if (hasBias) lb_bias_state_->setText("State: Stored");
+    else lb_bias_state_->setText("State: None");
+}
+
 void MainWindow::rebuildPlot(int n_ch) {
     for (auto* s : series_) {
         chart_->removeSeries(s);
@@ -410,7 +442,7 @@ void MainWindow::rebuildPlot(int n_ch) {
         auto pen = s->pen();
         pen.setWidthF(1.0);
         auto c = pen.color();
-        c.setAlpha(140);
+        c.setAlpha(120);
         pen.setColor(c);
         s->setPen(pen);
         series_.push_back(s);
@@ -468,6 +500,13 @@ void MainWindow::onPlotTick() {
     }
 
     axY_->setRange(yCenter - yAbs, yCenter + yAbs);
+
+    if (centerLine_) {
+        QList<QPointF> pts;
+        pts.append(QPointF(xMin, yCenter));
+        pts.append(QPointF(xMax, yCenter));
+        centerLine_->replace(pts);
+    }
 
     for (int i = 0; i < series_.size(); ++i) {
         series_[i]->replace(buffers_[i]);

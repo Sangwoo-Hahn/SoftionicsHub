@@ -53,6 +53,8 @@ signals:
     void frameReady(qulonglong t_ns, QVector<float> x, bool modelValid, float modelOut);
     void statsUpdated(qulonglong ok, qulonglong bad);
 
+    void biasStateChanged(bool hasBias, bool capturing);
+
 private:
     void startScanning();
     void stopScanning();
@@ -82,6 +84,9 @@ private:
     hub::Pipeline pipe_;
     hub::PipelineConfig cfg_;
     QMutex pipeMu_;
+
+    bool lastBiasHas_ = false;
+    bool lastBiasCapturing_ = false;
 
     std::atomic<size_t> n_ch_{0};
 

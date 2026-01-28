@@ -13,10 +13,14 @@ public:
     bool capturing() const { return capturing_; }
     bool has_bias() const { return has_bias_; }
 
+    void clear_bias();
+    void set_bias(const std::vector<float>& bias);
+
     void update_capture(const std::vector<float>& x);
     void apply_inplace(std::vector<float>& x) const;
 
     const std::vector<float>& bias() const { return bias_; }
+    size_t n_ch() const { return n_ch_; }
 
 private:
     size_t n_ch_ = 0;
