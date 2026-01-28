@@ -35,8 +35,9 @@ QListWidget::item {
 QListWidget::item:hover {
   background: #F2F8FF;
 }
+/* selected 스타일을 아예 안 쓰도록(선택 모드 자체를 끌 것이지만, 혹시 남아도 표시 안 나게) */
 QListWidget::item:selected {
-  background: #E6F1FF;
+  background: transparent;
 }
 
 QPushButton {

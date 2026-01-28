@@ -11,6 +11,8 @@
 #include <thread>
 #include <vector>
 #include <optional>
+#include <deque>
+#include <cstdint>
 
 #include <simpleble/SimpleBLE.h>
 
@@ -44,6 +46,9 @@ public slots:
 
     void loadWeights(QString path);
 
+    // ---- Bias 저장 CSV ----
+    void saveBiasCsv(QString path);
+
 signals:
     void scanUpdated(QVector<DeviceInfo> devices);
     void statusText(QString text);
@@ -55,12 +60,17 @@ signals:
 
     void biasStateChanged(bool hasBias, bool capturing);
 
+    // totalSamples, totalTimeSec, last1sSamples, lastDtSec
+    void streamStats(qulonglong totalSamples, double totalTimeSec, qulonglong last1sSamples, double lastDtSec);
+
 private:
     void startScanning();
     void stopScanning();
     void scanLoop();
     void notifyStart();
     void notifyStop();
+
+    void resetStreamStatsLocked();
 
 private:
     std::atomic<bool> scanning_{false};
@@ -102,4 +112,13 @@ private:
 
     std::atomic<bool> weightsPending_{false};
     std::vector<float> weights_;
+
+    // ---- stream stat (pipeMu_ 아래에서만 접근/수정) ----
+    uint64_t st_first_ns_ = 0;
+    uint64_t st_prev_ns_ = 0;
+    uint64_t st_last_ns_ = 0;
+    uint64_t st_last_dt_ns_ = 0;
+    uint64_t st_total_samples_ = 0;
+    uint64_t st_last_emit_ns_ = 0;
+    std::deque<uint64_t> st_last1s_ts_;
 };

@@ -19,6 +19,8 @@
 #include <QtCharts/QValueAxis>
 #include <QtCharts/QChart>
 
+#include <vector>
+
 #include "BleWorker.h"
 #include "hub/Pipeline.h"
 
@@ -37,12 +39,16 @@ private slots:
     void onStats(qulonglong ok, qulonglong bad);
     void onBiasState(bool hasBias, bool capturing);
 
-    void onDeviceDoubleClicked(QListWidgetItem*);
+    void onStreamStats(qulonglong totalSamples, double totalTimeSec, qulonglong last1sSamples, double lastDtSec);
+
+    void onDeviceClicked(QListWidgetItem*);
 
     void onAnyControlChanged();
     void applyPipelineNow();
 
     void onBiasCapture();
+    void onBiasSave();
+
     void onBrowseCsv();
     void onToggleRecord(bool on);
     void onLoadWeights();
@@ -54,6 +60,7 @@ private:
     void rebuildPlot(int n_ch);
     hub::PipelineConfig readCfgFromUi() const;
     void updateDeviceListDecor();
+    void clearPlotData();
 
 private:
     QThread workerThread_;
@@ -66,6 +73,8 @@ private:
     QLabel* status_ = nullptr;
     QLabel* conn_ = nullptr;
     QLabel* stats_ = nullptr;
+
+    QLabel* lb_stream_stats_ = nullptr;
 
     QDoubleSpinBox* sp_xwin_ = nullptr;
     QDoubleSpinBox* sp_ycenter_ = nullptr;
@@ -86,6 +95,7 @@ private:
     QCheckBox* cb_bias_apply_ = nullptr;
     QSpinBox* sp_bias_frames_ = nullptr;
     QPushButton* btn_bias_cap_ = nullptr;
+    QPushButton* btn_bias_save_ = nullptr;
     QLabel* lb_bias_state_ = nullptr;
 
     QCheckBox* cb_model_ = nullptr;
@@ -106,10 +116,13 @@ private:
     QVector<QLineSeries*> series_;
     QVector<QList<QPointF>> buffers_;
 
-    QVector<float> lastFrame_;
-    qulonglong lastTsNs_ = 0;
-    qulonglong t0Ns_ = 0;
+    std::vector<QVector<float>> pending_samples_;
+
+    double plotFsUsed_ = 0.0;
+    unsigned long long plotSampleIndex_ = 0;
 
     QTimer* plotTimer_ = nullptr;
     QTimer* applyTimer_ = nullptr;
+
+    bool fsAutoSetDone_ = false;
 };
