@@ -1,6 +1,5 @@
 #include "hub/model/Linear.h"
 #include <fstream>
-#include <sstream>
 #include <cstdlib>
 
 namespace hub {
@@ -17,9 +16,7 @@ void LinearModel::configure(size_t n_ch) {
         reset();
         return;
     }
-    if (ready_ && n_ch_ == n_ch && w_.size() == n_ch_) {
-        return;
-    }
+    if (ready_ && n_ch_ == n_ch && w_.size() == n_ch_) return;
     n_ch_ = n_ch;
     w_.assign(n_ch_, 0.0f);
     b_ = 0.0f;

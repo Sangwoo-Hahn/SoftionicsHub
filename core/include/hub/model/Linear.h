@@ -12,7 +12,6 @@ public:
     void configure(size_t n_ch);
     void set_bias(float b);
     void set_weights(const std::vector<float>& w);
-
     float eval(const std::vector<float>& x) const;
 
     bool ready() const { return ready_; }

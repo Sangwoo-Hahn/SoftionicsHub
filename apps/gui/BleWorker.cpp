@@ -154,6 +154,8 @@ void BleWorker::connectToIndex(int index) {
             resetStreamStatsLocked();
         }
 
+        bf16_.reset();
+
         emit biasStateChanged(lastBiasHas_, lastBiasCapturing_);
         emit streamStats(0, 0.0, 0, 0.0);
 
@@ -193,6 +195,8 @@ void BleWorker::disconnectDevice() {
         resetStreamStatsLocked();
     }
 
+    bf16_.reset();
+
     emit biasStateChanged(false, false);
     emit streamStats(0, 0.0, 0, 0.0);
 
@@ -221,10 +225,6 @@ void BleWorker::notifyStart() {
                 n_ch_.store(n);
                 QMutexLocker lk(&pipeMu_);
                 pipe_.ensure_initialized(n);
-                if (weightsPending_.load() && weights_.size() == n) {
-                    pipe_.set_model_weights(weights_);
-                    weightsPending_.store(false);
-                }
                 lastBiasHas_ = pipe_.bias_has();
                 lastBiasCapturing_ = pipe_.bias_capturing();
                 resetStreamStatsLocked();
@@ -261,7 +261,6 @@ void BleWorker::notifyStart() {
                     emitBias = true;
                 }
 
-                // ---- stream stat (샘플 1개 = 프레임 1개) ----
                 st_total_samples_ += 1;
 
                 uint64_t tn = (uint64_t)out.frame.t_ns;
@@ -299,26 +298,29 @@ void BleWorker::notifyStart() {
                     if (!csvHeaderWritten_) {
                         (*csv_) << "t";
                         for (size_t i = 0; i < out.frame.x.size(); ++i) (*csv_) << ",ch" << i;
-                        (*csv_) << ",model\n";
+                        (*csv_) << "\n";
                         csvHeaderWritten_ = true;
                     }
                     uint64_t base = (csv_t0_ns_ ? csv_t0_ns_ : stream_t0);
                     double ts = (static_cast<double>(out.frame.t_ns - base)) * 1e-9;
                     (*csv_) << ts;
                     for (size_t i = 0; i < out.frame.x.size(); ++i) (*csv_) << "," << out.frame.x[i];
-                    (*csv_) << "," << (out.model_valid ? out.model_out : 0.0f) << "\n";
+                    (*csv_) << "\n";
                 }
             }
 
-            if (emitStream) {
-                emit streamStats(totalSamples, totalTimeSec, last1sSamples, lastDtSec);
+            if (emitStream) emit streamStats(totalSamples, totalTimeSec, last1sSamples, lastDtSec);
+
+            if (out.frame.x.size() == 16) {
+                auto pose = bf16_.update(out.frame.x);
+                emit poseReady(pose.x, pose.y, pose.z, pose.q1, pose.q2, pose.err, pose.quiet, pose.has_pose);
             }
 
             QVector<float> qx;
             qx.reserve((int)out.frame.x.size());
             for (float f : out.frame.x) qx.push_back(f);
 
-            emit frameReady((qulonglong)out.frame.t_ns, qx, out.model_valid, out.model_out);
+            emit frameReady((qulonglong)out.frame.t_ns, qx, false, 0.0f);
 
             static thread_local uint64_t lastStats = 0;
             if (t - lastStats > 500000000ULL) {
@@ -388,26 +390,6 @@ void BleWorker::stopCsv() {
     if (!csvPath_.isEmpty()) emit statusText("CSV recording OFF");
 }
 
-void BleWorker::loadWeights(QString path) {
-    auto w = hub::load_weights_csv_1line(path.toStdString());
-    if (!w) {
-        emit statusText("Weights load failed");
-        return;
-    }
-    weights_ = *w;
-    weightsPending_.store(true);
-
-    size_t n = n_ch_.load();
-    if (n != 0 && weights_.size() == n) {
-        QMutexLocker lk(&pipeMu_);
-        pipe_.set_model_weights(weights_);
-        weightsPending_.store(false);
-        emit statusText("Weights applied");
-    } else {
-        emit statusText("Weights loaded (pending)");
-    }
-}
-
 void BleWorker::saveBiasCsv(QString path) {
     std::vector<float> bias;
     {
@@ -426,16 +408,18 @@ void BleWorker::saveBiasCsv(QString path) {
         return;
     }
 
-    ofs << "ch";
-    if (!bias.empty()) {
-        ofs.seekp(0, std::ios::beg);
-        ofs << "ch0";
-        for (size_t i = 1; i < bias.size(); ++i) ofs << ",ch" << i;
-        ofs << "\n";
-        ofs << bias[0];
-        for (size_t i = 1; i < bias.size(); ++i) ofs << "," << bias[i];
-        ofs << "\n";
+    if (bias.empty()) {
+        emit statusText("Bias empty");
+        return;
     }
+
+    ofs << "ch0";
+    for (size_t i = 1; i < bias.size(); ++i) ofs << ",ch" << i;
+    ofs << "\n";
+
+    ofs << bias[0];
+    for (size_t i = 1; i < bias.size(); ++i) ofs << "," << bias[i];
+    ofs << "\n";
 
     emit statusText("Bias CSV saved");
 }

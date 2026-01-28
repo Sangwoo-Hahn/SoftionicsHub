@@ -1,11 +1,17 @@
 cmake_minimum_required(VERSION 3.21)
-project(SoftionicsHub LANGUAGES CXX)
+project(SoftionicsHub LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(INSTALL_SimpleBLE OFF)
 add_subdirectory(third_party/simpleble/simpleble ${CMAKE_BINARY_DIR}/simpleble)
+
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+set(CMAKE_AUTOUIC ON)
+
+find_package(Qt6 REQUIRED COMPONENTS Widgets Charts)
 
 add_library(hub_core
   core/src/Framer.cpp
@@ -16,20 +22,11 @@ add_library(hub_core
   core/src/filters/Notch60.cpp
   core/src/filters/Bias.cpp
   core/src/model/Linear.cpp
+  core/src/model/BF16.cpp
 )
 
 target_include_directories(hub_core PUBLIC core/include)
 target_link_libraries(hub_core PUBLIC simpleble::simpleble)
-
-add_executable(softionics_hub_cli apps/cli/main.cpp)
-target_link_libraries(softionics_hub_cli PRIVATE hub_core)
-
-
-set(CMAKE_AUTOMOC ON)
-set(CMAKE_AUTORCC ON)
-set(CMAKE_AUTOUIC ON)
-
-find_package(Qt6 REQUIRED COMPONENTS Widgets Charts)
 
 if (WIN32)
   add_executable(softionics_hub_gui WIN32
@@ -49,8 +46,4 @@ else()
   )
 endif()
 
-target_link_libraries(softionics_hub_gui PRIVATE
-  Qt6::Widgets
-  Qt6::Charts
-  hub_core
-)
+target_link_libraries(softionics_hub_gui PRIVATE Qt6::Widgets Qt6::Charts hub_core)

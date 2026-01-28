@@ -19,7 +19,7 @@
 #include "hub/Framer.h"
 #include "hub/Parser.h"
 #include "hub/Pipeline.h"
-#include "hub/model/Linear.h"
+#include "hub/model/BF16.h"
 
 struct DeviceInfo {
     QString name;
@@ -44,9 +44,6 @@ public slots:
     void startCsv(QString path);
     void stopCsv();
 
-    void loadWeights(QString path);
-
-    // ---- Bias 저장 CSV ----
     void saveBiasCsv(QString path);
 
 signals:
@@ -60,8 +57,9 @@ signals:
 
     void biasStateChanged(bool hasBias, bool capturing);
 
-    // totalSamples, totalTimeSec, last1sSamples, lastDtSec
     void streamStats(qulonglong totalSamples, double totalTimeSec, qulonglong last1sSamples, double lastDtSec);
+
+    void poseReady(double x, double y, double z, double q1, double q2, double err, bool quiet, bool hasPose);
 
 private:
     void startScanning();
@@ -110,10 +108,6 @@ private:
     uint64_t csv_t0_ns_ = 0;
     QMutex csvMu_;
 
-    std::atomic<bool> weightsPending_{false};
-    std::vector<float> weights_;
-
-    // ---- stream stat (pipeMu_ 아래에서만 접근/수정) ----
     uint64_t st_first_ns_ = 0;
     uint64_t st_prev_ns_ = 0;
     uint64_t st_last_ns_ = 0;
@@ -121,4 +115,6 @@ private:
     uint64_t st_total_samples_ = 0;
     uint64_t st_last_emit_ns_ = 0;
     std::deque<uint64_t> st_last1s_ts_;
+
+    hub::BF16Solver bf16_;
 };

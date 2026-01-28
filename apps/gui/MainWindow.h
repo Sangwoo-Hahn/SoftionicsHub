@@ -16,6 +16,7 @@
 
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
+#include <QtCharts/QScatterSeries>
 #include <QtCharts/QValueAxis>
 #include <QtCharts/QChart>
 
@@ -41,7 +42,9 @@ private slots:
 
     void onStreamStats(qulonglong totalSamples, double totalTimeSec, qulonglong last1sSamples, double lastDtSec);
 
-    void onDeviceClicked(QListWidgetItem*);
+    void onPoseReady(double x, double y, double z, double q1, double q2, double err, bool quiet, bool hasPose);
+
+    void onDeviceClicked(QListWidgetItem* item);
 
     void onAnyControlChanged();
     void applyPipelineNow();
@@ -51,16 +54,28 @@ private slots:
 
     void onBrowseCsv();
     void onToggleRecord(bool on);
-    void onLoadWeights();
 
     void onPlotTick();
 
 private:
     void buildUi();
-    void rebuildPlot(int n_ch);
+    void rebuildTimePlot(int n_ch);
     hub::PipelineConfig readCfgFromUi() const;
     void updateDeviceListDecor();
-    void clearPlotData();
+    void clearTimePlotData();
+    void updateXYPlot();
+
+private:
+    struct PosePkt {
+        bool hasPose;
+        bool quiet;
+        double x;
+        double y;
+        double z;
+        double q1;
+        double q2;
+        double err;
+    };
 
 private:
     QThread workerThread_;
@@ -75,6 +90,7 @@ private:
     QLabel* stats_ = nullptr;
 
     QLabel* lb_stream_stats_ = nullptr;
+    QLabel* lb_pose_stats_ = nullptr;
 
     QDoubleSpinBox* sp_xwin_ = nullptr;
     QDoubleSpinBox* sp_ycenter_ = nullptr;
@@ -98,28 +114,35 @@ private:
     QPushButton* btn_bias_save_ = nullptr;
     QLabel* lb_bias_state_ = nullptr;
 
-    QCheckBox* cb_model_ = nullptr;
-    QDoubleSpinBox* sp_model_bias_ = nullptr;
-    QLabel* modelOut_ = nullptr;
-    QPushButton* btn_load_weights_ = nullptr;
-
     QCheckBox* cb_record_ = nullptr;
     QLineEdit* ed_csv_path_ = nullptr;
     QPushButton* btn_browse_csv_ = nullptr;
 
-    QChartView* chartView_ = nullptr;
-    QChart* chart_ = nullptr;
-    QValueAxis* axX_ = nullptr;
-    QValueAxis* axY_ = nullptr;
-    QLineSeries* centerLine_ = nullptr;
-
-    QVector<QLineSeries*> series_;
-    QVector<QList<QPointF>> buffers_;
+    QChartView* timeView_ = nullptr;
+    QChart* timeChart_ = nullptr;
+    QValueAxis* timeAxX_ = nullptr;
+    QValueAxis* timeAxY_ = nullptr;
+    QLineSeries* timeCenterLine_ = nullptr;
+    QVector<QLineSeries*> timeSeries_;
+    QVector<QList<QPointF>> timeBuffers_;
 
     std::vector<QVector<float>> pending_samples_;
-
     double plotFsUsed_ = 0.0;
     unsigned long long plotSampleIndex_ = 0;
+
+    QChartView* xyView_ = nullptr;
+    QChart* xyChart_ = nullptr;
+    QValueAxis* xyAxX_ = nullptr;
+    QValueAxis* xyAxY_ = nullptr;
+    QScatterSeries* xySensors_ = nullptr;
+    QLineSeries* xyPath_ = nullptr;
+    QScatterSeries* xyCurrent_ = nullptr;
+
+    std::vector<PosePkt> pending_pose_;
+    QList<QPointF> xyPathBuf_;
+    int xyMaxPoints_ = 40;
+
+    PosePkt lastPose_{false,false,0,0,0,0,0,0};
 
     QTimer* plotTimer_ = nullptr;
     QTimer* applyTimer_ = nullptr;
