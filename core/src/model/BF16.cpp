@@ -28,6 +28,25 @@ void BF16Solver::reset() {
     lastEma_ = {0,0,0};
 }
 
+void BF16Solver::set_params(double rc_r, double rc_c, double ema_alpha, double quiet_err_thresh) {
+    if (rc_r < 1.0) rc_r = 1.0;
+    if (rc_c < 1e-18) rc_c = 1e-18;
+    ema_alpha = std::clamp(ema_alpha, 0.0, 1.0);
+    if (quiet_err_thresh < 0.0) quiet_err_thresh = 0.0;
+
+    RC_R_ = rc_r;
+    RC_C_ = rc_c;
+    ema_alpha_ = ema_alpha;
+    quiet_err_thresh_ = quiet_err_thresh;
+}
+
+void BF16Solver::get_params(double& rc_r, double& rc_c, double& ema_alpha, double& quiet_err_thresh) const {
+    rc_r = RC_R_;
+    rc_c = RC_C_;
+    ema_alpha = ema_alpha_;
+    quiet_err_thresh = quiet_err_thresh_;
+}
+
 std::array<Vec3d, BF16Solver::NSENS> BF16Solver::sensor_positions() {
     ensure_built();
     return sensors_;

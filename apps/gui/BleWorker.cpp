@@ -37,6 +37,24 @@ BleWorker::~BleWorker() {
     disconnectDevice();
 }
 
+void BleWorker::setBF16Enabled(bool on) {
+    bf16Enabled_.store(on);
+    if (on) {
+        QMutexLocker lk(&bfMu_);
+        bf16_.reset();
+    }
+}
+
+void BleWorker::setBF16Params(double rc_r, double rc_c, double ema_alpha, double quiet_thresh) {
+    QMutexLocker lk(&bfMu_);
+    bf16_.set_params(rc_r, rc_c, ema_alpha, quiet_thresh);
+}
+
+void BleWorker::resetBF16() {
+    QMutexLocker lk(&bfMu_);
+    bf16_.reset();
+}
+
 void BleWorker::resetStreamStatsLocked() {
     st_first_ns_ = 0;
     st_prev_ns_ = 0;
@@ -77,10 +95,10 @@ void BleWorker::scanLoop() {
             auto results = adapter_->scan_get_results();
 
             QVector<DeviceInfo> list;
-
             {
                 QMutexLocker lk(&periphMu_);
                 peripherals_.clear();
+                peripherals_.reserve(results.size());
 
                 for (auto& p : results) {
                     auto name = p.identifier();
@@ -122,6 +140,7 @@ void BleWorker::connectToIndex(int index) {
     }
 
     try {
+        // 클릭한 동일 장치면 토글로 끊기
         if (connected_.load() && active_ && active_->address() == p.address()) {
             disconnectDevice();
             if (wasScanning) startScanning();
@@ -153,11 +172,13 @@ void BleWorker::connectToIndex(int index) {
             lastBiasCapturing_ = pipe_.bias_capturing();
             resetStreamStatsLocked();
         }
-
-        bf16_.reset();
-
         emit biasStateChanged(lastBiasHas_, lastBiasCapturing_);
         emit streamStats(0, 0.0, 0, 0.0);
+
+        {
+            QMutexLocker lk(&bfMu_);
+            bf16_.reset();
+        }
 
         n_ch_.store(0);
         ok_.store(0);
@@ -168,6 +189,7 @@ void BleWorker::connectToIndex(int index) {
 
         emit connected(QString::fromStdString(p.identifier()), QString::fromStdString(p.address()));
         emit statusText("Connected");
+
     } catch (...) {
         emit statusText("Connect failed");
     }
@@ -194,11 +216,13 @@ void BleWorker::disconnectDevice() {
         lastBiasCapturing_ = false;
         resetStreamStatsLocked();
     }
-
-    bf16_.reset();
-
     emit biasStateChanged(false, false);
     emit streamStats(0, 0.0, 0, 0.0);
+
+    {
+        QMutexLocker lk(&bfMu_);
+        bf16_.reset();
+    }
 
     emit disconnected();
     emit statusText("Scanning...");
@@ -239,7 +263,6 @@ void BleWorker::notifyStart() {
             hub::PipelineOut out;
             bool cap = false;
             bool has = false;
-
             bool emitBias = false;
             bool emitStream = false;
 
@@ -261,6 +284,7 @@ void BleWorker::notifyStart() {
                     emitBias = true;
                 }
 
+                // ---- stream stats ----
                 st_total_samples_ += 1;
 
                 uint64_t tn = (uint64_t)out.frame.t_ns;
@@ -289,9 +313,11 @@ void BleWorker::notifyStart() {
             }
 
             if (emitBias) emit biasStateChanged(has, cap);
+            if (emitStream) emit streamStats(totalSamples, totalTimeSec, last1sSamples, lastDtSec);
 
             ok_.fetch_add(1);
 
+            // ---- CSV ----
             if (csvOn_.load()) {
                 QMutexLocker lk(&csvMu_);
                 if (csv_ && (*csv_)) {
@@ -309,18 +335,21 @@ void BleWorker::notifyStart() {
                 }
             }
 
-            if (emitStream) emit streamStats(totalSamples, totalTimeSec, last1sSamples, lastDtSec);
-
-            if (out.frame.x.size() == 16) {
-                auto pose = bf16_.update(out.frame.x);
-                emit poseReady(pose.x, pose.y, pose.z, pose.q1, pose.q2, pose.err, pose.quiet, pose.has_pose);
-            }
-
+            // ---- time/raw plot ----
             QVector<float> qx;
             qx.reserve((int)out.frame.x.size());
             for (float f : out.frame.x) qx.push_back(f);
-
             emit frameReady((qulonglong)out.frame.t_ns, qx, false, 0.0f);
+
+            // ---- BF16 (only when BF16Window opened) ----
+            if (bf16Enabled_.load() && out.frame.x.size() == 16) {
+                hub::BF16Output pose;
+                {
+                    QMutexLocker lk(&bfMu_);
+                    pose = bf16_.update(out.frame.x);
+                }
+                emit poseReady(pose.x, pose.y, pose.z, pose.q1, pose.q2, pose.err, pose.quiet, pose.has_pose);
+            }
 
             static thread_local uint64_t lastStats = 0;
             if (t - lastStats > 500000000ULL) {

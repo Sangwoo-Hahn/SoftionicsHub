@@ -1,4 +1,6 @@
-#pragma once
+#ifndef SOFTIONICS_GUI_MAINWINDOW_H
+#define SOFTIONICS_GUI_MAINWINDOW_H
+
 #include <QMainWindow>
 #include <QThread>
 #include <QTimer>
@@ -16,7 +18,6 @@
 
 #include <QtCharts/QChartView>
 #include <QtCharts/QLineSeries>
-#include <QtCharts/QScatterSeries>
 #include <QtCharts/QValueAxis>
 #include <QtCharts/QChart>
 
@@ -24,6 +25,8 @@
 
 #include "BleWorker.h"
 #include "hub/Pipeline.h"
+
+class BF16Window;
 
 class MainWindow : public QMainWindow {
     Q_OBJECT
@@ -42,8 +45,6 @@ private slots:
 
     void onStreamStats(qulonglong totalSamples, double totalTimeSec, qulonglong last1sSamples, double lastDtSec);
 
-    void onPoseReady(double x, double y, double z, double q1, double q2, double err, bool quiet, bool hasPose);
-
     void onDeviceClicked(QListWidgetItem* item);
 
     void onAnyControlChanged();
@@ -51,9 +52,10 @@ private slots:
 
     void onBiasCapture();
     void onBiasSave();
-
     void onBrowseCsv();
     void onToggleRecord(bool on);
+
+    void onOpenBF16();
 
     void onPlotTick();
 
@@ -63,23 +65,12 @@ private:
     hub::PipelineConfig readCfgFromUi() const;
     void updateDeviceListDecor();
     void clearTimePlotData();
-    void updateXYPlot();
-
-private:
-    struct PosePkt {
-        bool hasPose;
-        bool quiet;
-        double x;
-        double y;
-        double z;
-        double q1;
-        double q2;
-        double err;
-    };
 
 private:
     QThread workerThread_;
     BleWorker* worker_ = nullptr;
+
+    BF16Window* bfWin_ = nullptr;
 
     QVector<DeviceInfo> devices_;
     QString connectedAddr_;
@@ -90,7 +81,6 @@ private:
     QLabel* stats_ = nullptr;
 
     QLabel* lb_stream_stats_ = nullptr;
-    QLabel* lb_pose_stats_ = nullptr;
 
     QDoubleSpinBox* sp_xwin_ = nullptr;
     QDoubleSpinBox* sp_ycenter_ = nullptr;
@@ -114,6 +104,8 @@ private:
     QPushButton* btn_bias_save_ = nullptr;
     QLabel* lb_bias_state_ = nullptr;
 
+    QPushButton* btn_bf16_ = nullptr;
+
     QCheckBox* cb_record_ = nullptr;
     QLineEdit* ed_csv_path_ = nullptr;
     QPushButton* btn_browse_csv_ = nullptr;
@@ -130,22 +122,10 @@ private:
     double plotFsUsed_ = 0.0;
     unsigned long long plotSampleIndex_ = 0;
 
-    QChartView* xyView_ = nullptr;
-    QChart* xyChart_ = nullptr;
-    QValueAxis* xyAxX_ = nullptr;
-    QValueAxis* xyAxY_ = nullptr;
-    QScatterSeries* xySensors_ = nullptr;
-    QLineSeries* xyPath_ = nullptr;
-    QScatterSeries* xyCurrent_ = nullptr;
-
-    std::vector<PosePkt> pending_pose_;
-    QList<QPointF> xyPathBuf_;
-    int xyMaxPoints_ = 40;
-
-    PosePkt lastPose_{false,false,0,0,0,0,0,0};
-
     QTimer* plotTimer_ = nullptr;
     QTimer* applyTimer_ = nullptr;
 
     bool fsAutoSetDone_ = false;
 };
+
+#endif

@@ -1,4 +1,6 @@
 #include "MainWindow.h"
+#include "BF16Window.h"
+
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QSplitter>
@@ -7,8 +9,9 @@
 #include <QFont>
 #include <QPainter>
 #include <QAbstractItemView>
+#include <QtCore/QOverload>
+
 #include <cmath>
-#include "hub/model/BF16.h"
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     worker_ = new BleWorker();
@@ -23,7 +26,6 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     connect(worker_, &BleWorker::statsUpdated, this, &MainWindow::onStats);
     connect(worker_, &BleWorker::biasStateChanged, this, &MainWindow::onBiasState);
     connect(worker_, &BleWorker::streamStats, this, &MainWindow::onStreamStats);
-    connect(worker_, &BleWorker::poseReady, this, &MainWindow::onPoseReady);
 
     buildUi();
 
@@ -42,6 +44,11 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 }
 
 MainWindow::~MainWindow() {
+    if (bfWin_) {
+        bfWin_->close();
+        bfWin_ = nullptr;
+    }
+
     if (worker_) {
         QMetaObject::invokeMethod(worker_, "disconnectDevice", Qt::BlockingQueuedConnection);
     }
@@ -57,6 +64,7 @@ void MainWindow::buildUi() {
     auto* split = new QSplitter(Qt::Horizontal, central);
     split->setChildrenCollapsible(false);
 
+    // ---- devices ----
     auto* devPanel = new QWidget(split);
     devPanel->setMinimumWidth(280);
     auto* devL = new QVBoxLayout(devPanel);
@@ -87,6 +95,7 @@ void MainWindow::buildUi() {
 
     split->addWidget(devPanel);
 
+    // ---- time plot ----
     auto* chartPanel = new QWidget(split);
     chartPanel->setMinimumWidth(900);
     auto* chartL = new QVBoxLayout(chartPanel);
@@ -96,10 +105,8 @@ void MainWindow::buildUi() {
 
     timeAxX_ = new QValueAxis();
     timeAxY_ = new QValueAxis();
-
     timeAxX_->setRange(0.0, 1.0);
     timeAxY_->setRange(-1.0, 1.0);
-
     timeAxX_->setLabelFormat("%.3f");
     timeAxY_->setLabelFormat("%.6g");
 
@@ -110,13 +117,15 @@ void MainWindow::buildUi() {
     timeChart_->addSeries(timeCenterLine_);
     timeCenterLine_->attachAxis(timeAxX_);
     timeCenterLine_->attachAxis(timeAxY_);
-    auto pen = timeCenterLine_->pen();
-    pen.setWidthF(1.0);
-    pen.setStyle(Qt::DashLine);
-    auto c = pen.color();
-    c.setAlpha(140);
-    pen.setColor(c);
-    timeCenterLine_->setPen(pen);
+    {
+        auto pen = timeCenterLine_->pen();
+        pen.setWidthF(1.0);
+        pen.setStyle(Qt::DashLine);
+        auto c = pen.color();
+        c.setAlpha(140);
+        pen.setColor(c);
+        timeCenterLine_->setPen(pen);
+    }
 
     timeView_ = new QChartView(timeChart_, chartPanel);
     timeView_->setRenderHint(QPainter::Antialiasing, true);
@@ -127,60 +136,19 @@ void MainWindow::buildUi() {
     lb_stream_stats_->setTextInteractionFlags(Qt::TextSelectableByMouse);
     chartL->addWidget(lb_stream_stats_);
 
-    lb_pose_stats_ = new QLabel("Pose: N/A (need 16ch)", chartPanel);
-    lb_pose_stats_->setObjectName("StatusLabel");
-    lb_pose_stats_->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    chartL->addWidget(lb_pose_stats_);
-
-    xyChart_ = new QChart();
-    xyChart_->legend()->hide();
-
-    xyAxX_ = new QValueAxis();
-    xyAxY_ = new QValueAxis();
-    xyAxX_->setRange(-0.08, 0.08);
-    xyAxY_->setRange(-0.08, 0.08);
-    xyAxX_->setLabelFormat("%.3f");
-    xyAxY_->setLabelFormat("%.3f");
-
-    xyChart_->addAxis(xyAxX_, Qt::AlignBottom);
-    xyChart_->addAxis(xyAxY_, Qt::AlignLeft);
-
-    xySensors_ = new QScatterSeries(xyChart_);
-    xySensors_->setMarkerSize(6.0);
-    xyChart_->addSeries(xySensors_);
-    xySensors_->attachAxis(xyAxX_);
-    xySensors_->attachAxis(xyAxY_);
-
-    auto sens = hub::BF16Solver::sensor_positions();
-    for (int i = 0; i < 16; ++i) {
-        xySensors_->append(sens[i].x, sens[i].y);
-    }
-
-    xyPath_ = new QLineSeries(xyChart_);
-    xyChart_->addSeries(xyPath_);
-    xyPath_->attachAxis(xyAxX_);
-    xyPath_->attachAxis(xyAxY_);
-    auto ppen = xyPath_->pen();
-    ppen.setWidthF(2.0);
-    xyPath_->setPen(ppen);
-
-    xyCurrent_ = new QScatterSeries(xyChart_);
-    xyCurrent_->setMarkerSize(10.0);
-    xyChart_->addSeries(xyCurrent_);
-    xyCurrent_->attachAxis(xyAxX_);
-    xyCurrent_->attachAxis(xyAxY_);
-
-    xyView_ = new QChartView(xyChart_, chartPanel);
-    xyView_->setRenderHint(QPainter::Antialiasing, true);
-    xyView_->setMinimumHeight(260);
-    xyView_->setMaximumHeight(260);
-    chartL->addWidget(xyView_);
-
     split->addWidget(chartPanel);
 
+    // ---- controls ----
     auto* ctrlPanel = new QWidget(split);
     ctrlPanel->setMinimumWidth(420);
     auto* ctrlL = new QVBoxLayout(ctrlPanel);
+
+    auto* gBf = new QGroupBox("BF16", ctrlPanel);
+    auto* bfL = new QVBoxLayout(gBf);
+    btn_bf16_ = new QPushButton("Open BF16 Window", gBf);
+    connect(btn_bf16_, &QPushButton::clicked, this, &MainWindow::onOpenBF16);
+    bfL->addWidget(btn_bf16_);
+    ctrlL->addWidget(gBf);
 
     auto* gPlot = new QGroupBox("Plot", ctrlPanel);
     auto* pL = new QVBoxLayout(gPlot);
@@ -341,37 +309,37 @@ void MainWindow::buildUi() {
 
     auto applyHook = [this]() { onAnyControlChanged(); };
 
-    connect(sp_xwin_, &QDoubleSpinBox::valueChanged, this, [this]() { clearTimePlotData(); });
-    connect(sp_ycenter_, &QDoubleSpinBox::valueChanged, this, applyHook);
-    connect(sp_yabs_, &QDoubleSpinBox::valueChanged, this, applyHook);
+    connect(sp_xwin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) { clearTimePlotData(); });
+    connect(sp_ycenter_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
+    connect(sp_yabs_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
     connect(cb_yauto_, &QCheckBox::toggled, this, applyHook);
 
     connect(cb_ma_, &QCheckBox::toggled, this, applyHook);
-    connect(sp_ma_, &QSpinBox::valueChanged, this, applyHook);
+    connect(sp_ma_, QOverload<int>::of(&QSpinBox::valueChanged), this, applyHook);
     connect(cb_ema_, &QCheckBox::toggled, this, applyHook);
-    connect(sp_alpha_, &QDoubleSpinBox::valueChanged, this, applyHook);
+    connect(sp_alpha_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
 
     connect(cb_notch_, &QCheckBox::toggled, this, applyHook);
-    connect(sp_fs_, &QDoubleSpinBox::valueChanged, this, [this]() {
+    connect(sp_fs_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) {
         clearTimePlotData();
         onAnyControlChanged();
     });
-    connect(sp_f0_, &QDoubleSpinBox::valueChanged, this, applyHook);
-    connect(sp_q_, &QDoubleSpinBox::valueChanged, this, applyHook);
+    connect(sp_f0_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
+    connect(sp_q_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
 
     connect(cb_bias_apply_, &QCheckBox::toggled, this, applyHook);
 
     split->addWidget(ctrlPanel);
 
     split->setStretchFactor(0, 2);
-    split->setStretchFactor(1, 14);
+    split->setStretchFactor(1, 16);
     split->setStretchFactor(2, 3);
 
     root->addWidget(split);
     setCentralWidget(central);
 
     setWindowTitle("SoftionicsHub");
-    resize(1750, 1050);
+    resize(1850, 980);
 }
 
 hub::PipelineConfig MainWindow::readCfgFromUi() const {
@@ -447,6 +415,16 @@ void MainWindow::onToggleRecord(bool on) {
     }
 }
 
+void MainWindow::onOpenBF16() {
+    if (!bfWin_) {
+        bfWin_ = new BF16Window(worker_, this);
+        bfWin_->setAttribute(Qt::WA_DeleteOnClose, false);
+    }
+    bfWin_->show();
+    bfWin_->raise();
+    bfWin_->activateWindow();
+}
+
 void MainWindow::onDeviceClicked(QListWidgetItem* item) {
     if (!item) return;
     int idx = list_->row(item);
@@ -460,9 +438,9 @@ void MainWindow::onScanUpdated(QVector<DeviceInfo> devices) {
     for (int i = 0; i < devices_.size(); ++i) {
         auto& d = devices_[i];
         QString s = QString("%1  (%2)  rssi=%3").arg(d.name).arg(d.address).arg(d.rssi);
-        auto* item = new QListWidgetItem(s);
-        item->setData(Qt::UserRole, d.address);
-        list_->addItem(item);
+        auto* it = new QListWidgetItem(s);
+        it->setData(Qt::UserRole, d.address);
+        list_->addItem(it);
     }
     updateDeviceListDecor();
 }
@@ -486,13 +464,6 @@ void MainWindow::onConnected(QString name, QString addr) {
 
     fsAutoSetDone_ = false;
     clearTimePlotData();
-
-    pending_pose_.clear();
-    xyPathBuf_.clear();
-    xyPath_->replace(QList<QPointF>());
-    xyCurrent_->replace(QList<QPointF>());
-    lastPose_ = {false,false,0,0,0,0,0,0};
-    lb_pose_stats_->setText("Pose: waiting (need 2 frames)");
 }
 
 void MainWindow::onDisconnected() {
@@ -502,13 +473,6 @@ void MainWindow::onDisconnected() {
 
     fsAutoSetDone_ = false;
     clearTimePlotData();
-
-    pending_pose_.clear();
-    xyPathBuf_.clear();
-    xyPath_->replace(QList<QPointF>());
-    xyCurrent_->replace(QList<QPointF>());
-    lastPose_ = {false,false,0,0,0,0,0,0};
-    lb_pose_stats_->setText("Pose: N/A (need 16ch)");
 }
 
 void MainWindow::onStats(qulonglong ok, qulonglong bad) {
@@ -525,12 +489,11 @@ void MainWindow::onBiasState(bool hasBias, bool capturing) {
 void MainWindow::onStreamStats(qulonglong totalSamples, double totalTimeSec, qulonglong last1sSamples, double lastDtSec) {
     if (lb_stream_stats_) {
         double dt_ms = lastDtSec * 1000.0;
-        QString s = QString("Total: %1 | Time: %2 s | 1s: %3 | dt: %4 ms")
+        lb_stream_stats_->setText(QString("Total: %1 | Time: %2 s | 1s: %3 | dt: %4 ms")
             .arg(totalSamples)
             .arg(totalTimeSec, 0, 'f', 3)
             .arg(last1sSamples)
-            .arg(dt_ms, 0, 'f', 3);
-        lb_stream_stats_->setText(s);
+            .arg(dt_ms, 0, 'f', 3));
     }
 
     if (!fsAutoSetDone_ && totalTimeSec >= 1.0 && last1sSamples > 0) {
@@ -568,129 +531,83 @@ void MainWindow::onFrame(qulonglong, QVector<float> x, bool, float) {
     pending_samples_.emplace_back(std::move(x));
 }
 
-void MainWindow::onPoseReady(double x, double y, double z, double q1, double q2, double err, bool quiet, bool hasPose) {
-    pending_pose_.push_back(PosePkt{hasPose, quiet, x, y, z, q1, q2, err});
-}
-
-void MainWindow::updateXYPlot() {
-    if (!lastPose_.hasPose) return;
-
-    QList<QPointF> cur;
-    cur.append(QPointF(lastPose_.x, lastPose_.y));
-    xyCurrent_->replace(cur);
-    xyPath_->replace(xyPathBuf_);
-
-    double xmm = lastPose_.x * 1000.0;
-    double ymm = lastPose_.y * 1000.0;
-    double zmm = lastPose_.z * 1000.0;
-
-    QString s = QString("Pose: x=%1 mm, y=%2 mm, z=%3 mm | q1=%4 q2=%5 | err=%6 | %7")
-        .arg(xmm, 0, 'f', 1)
-        .arg(ymm, 0, 'f', 1)
-        .arg(zmm, 0, 'f', 1)
-        .arg(lastPose_.q1, 0, 'g', 6)
-        .arg(lastPose_.q2, 0, 'g', 6)
-        .arg(lastPose_.err, 0, 'g', 6)
-        .arg(lastPose_.quiet ? "QUIET" : "ACTIVE");
-
-    lb_pose_stats_->setText(s);
-}
-
 void MainWindow::onPlotTick() {
-    if (!pending_samples_.empty()) {
-        std::vector<QVector<float>> local;
-        local.swap(pending_samples_);
+    if (pending_samples_.empty()) return;
 
-        double fs = sp_fs_ ? sp_fs_->value() : 200.0;
-        if (fs < 1.0) fs = 1.0;
+    std::vector<QVector<float>> local;
+    local.swap(pending_samples_);
 
-        if (plotFsUsed_ == 0.0) plotFsUsed_ = fs;
-        if (std::abs(fs - plotFsUsed_) > 1e-9) {
-            plotFsUsed_ = fs;
-            plotSampleIndex_ = 0;
-            for (auto& b : timeBuffers_) b.clear();
-            for (auto* s : timeSeries_) s->replace(QList<QPointF>());
-        }
+    double fs = sp_fs_ ? sp_fs_->value() : 200.0;
+    if (fs < 1.0) fs = 1.0;
 
-        const double dt = 1.0 / plotFsUsed_;
+    if (plotFsUsed_ == 0.0) plotFsUsed_ = fs;
+    if (std::abs(fs - plotFsUsed_) > 1e-9) {
+        plotFsUsed_ = fs;
+        plotSampleIndex_ = 0;
+        for (auto& b : timeBuffers_) b.clear();
+        for (auto* s : timeSeries_) s->replace(QList<QPointF>());
+    }
 
-        int n_ch = (int)local.front().size();
-        if (n_ch > 0 && timeSeries_.size() != n_ch) rebuildTimePlot(n_ch);
+    const double dt = 1.0 / plotFsUsed_;
 
-        double t_end = 0.0;
-        for (const auto& sample : local) {
-            if ((int)sample.size() != n_ch) continue;
-            double t = (double)plotSampleIndex_ * dt;
-            plotSampleIndex_++;
-            t_end = t;
-            for (int i = 0; i < n_ch; ++i) {
-                timeBuffers_[i].append(QPointF(t, sample[i]));
-            }
-        }
+    int n_ch = (int)local.front().size();
+    if (n_ch > 0 && timeSeries_.size() != n_ch) rebuildTimePlot(n_ch);
 
-        double xwin = sp_xwin_ ? sp_xwin_->value() : 1.0;
-        if (xwin < 0.5) xwin = 0.5;
+    double t_end = 0.0;
+    for (const auto& sample : local) {
+        if ((int)sample.size() != n_ch) continue;
 
-        double xMin = t_end - xwin;
-        if (xMin < 0.0) xMin = 0.0;
-        double xMax = xMin + xwin;
-
-        timeAxX_->setRange(xMin, xMax);
+        double t = (double)plotSampleIndex_ * dt;
+        plotSampleIndex_++;
+        t_end = t;
 
         for (int i = 0; i < n_ch; ++i) {
-            while (!timeBuffers_[i].isEmpty() && timeBuffers_[i].first().x() < xMin) timeBuffers_[i].removeFirst();
-        }
-
-        double yCenter = sp_ycenter_ ? sp_ycenter_->value() : 0.0;
-        bool yAuto = cb_yauto_ ? cb_yauto_->isChecked() : true;
-
-        double yAbs = 1.0;
-        if (yAuto) {
-            double maxAbs = 0.0;
-            for (int i = 0; i < n_ch; ++i) {
-                for (const auto& pt : timeBuffers_[i]) {
-                    double a = std::abs(pt.y() - yCenter);
-                    if (a > maxAbs) maxAbs = a;
-                }
-            }
-            if (maxAbs < 1e-12) maxAbs = 1.0;
-            yAbs = maxAbs * 1.05;
-        } else {
-            double v = sp_yabs_ ? sp_yabs_->value() : 1.0;
-            if (v < 1e-12) v = 1.0;
-            yAbs = v;
-        }
-        timeAxY_->setRange(yCenter - yAbs, yCenter + yAbs);
-
-        if (timeCenterLine_) {
-            QList<QPointF> pts;
-            pts.append(QPointF(xMin, yCenter));
-            pts.append(QPointF(xMax, yCenter));
-            timeCenterLine_->replace(pts);
-        }
-
-        for (int i = 0; i < n_ch; ++i) {
-            timeSeries_[i]->replace(timeBuffers_[i]);
+            timeBuffers_[i].append(QPointF(t, sample[i]));
         }
     }
 
-    if (!pending_pose_.empty()) {
-        std::vector<PosePkt> localPose;
-        localPose.swap(pending_pose_);
+    double xwin = sp_xwin_ ? sp_xwin_->value() : 1.0;
+    if (xwin < 0.5) xwin = 0.5;
 
-        for (const auto& p : localPose) {
-            if (!p.hasPose) continue;
+    double xMin = t_end - xwin;
+    if (xMin < 0.0) xMin = 0.0;
+    double xMax = xMin + xwin;
 
-            lastPose_ = p;
+    timeAxX_->setRange(xMin, xMax);
 
-            if (p.quiet) {
-                if (!xyPathBuf_.isEmpty()) xyPathBuf_.removeFirst();
-            } else {
-                xyPathBuf_.append(QPointF(p.x, p.y));
-                while (xyPathBuf_.size() > xyMaxPoints_) xyPathBuf_.removeFirst();
+    for (int i = 0; i < n_ch; ++i) {
+        while (!timeBuffers_[i].isEmpty() && timeBuffers_[i].first().x() < xMin) timeBuffers_[i].removeFirst();
+    }
+
+    double yCenter = sp_ycenter_ ? sp_ycenter_->value() : 0.0;
+    bool yAuto = cb_yauto_ ? cb_yauto_->isChecked() : true;
+
+    double yAbs = 1.0;
+    if (yAuto) {
+        double maxAbs = 0.0;
+        for (int i = 0; i < n_ch; ++i) {
+            for (const auto& pt : timeBuffers_[i]) {
+                double a = std::abs(pt.y() - yCenter);
+                if (a > maxAbs) maxAbs = a;
             }
         }
+        if (maxAbs < 1e-12) maxAbs = 1.0;
+        yAbs = maxAbs * 1.05;
+    } else {
+        double v = sp_yabs_ ? sp_yabs_->value() : 1.0;
+        if (v < 1e-12) v = 1.0;
+        yAbs = v;
+    }
+    timeAxY_->setRange(yCenter - yAbs, yCenter + yAbs);
 
-        updateXYPlot();
+    if (timeCenterLine_) {
+        QList<QPointF> pts;
+        pts.append(QPointF(xMin, yCenter));
+        pts.append(QPointF(xMax, yCenter));
+        timeCenterLine_->replace(pts);
+    }
+
+    for (int i = 0; i < n_ch; ++i) {
+        timeSeries_[i]->replace(timeBuffers_[i]);
     }
 }

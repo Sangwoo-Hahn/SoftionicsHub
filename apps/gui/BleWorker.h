@@ -1,4 +1,6 @@
-#pragma once
+#ifndef SOFTIONICS_GUI_BLEWORKER_H
+#define SOFTIONICS_GUI_BLEWORKER_H
+
 #include <QObject>
 #include <QVector>
 #include <QString>
@@ -45,6 +47,10 @@ public slots:
     void stopCsv();
 
     void saveBiasCsv(QString path);
+
+    void setBF16Enabled(bool on);
+    void setBF16Params(double rc_r, double rc_c, double ema_alpha, double quiet_thresh);
+    void resetBF16();
 
 signals:
     void scanUpdated(QVector<DeviceInfo> devices);
@@ -116,5 +122,9 @@ private:
     uint64_t st_last_emit_ns_ = 0;
     std::deque<uint64_t> st_last1s_ts_;
 
+    std::atomic<bool> bf16Enabled_{false};
+    QMutex bfMu_;
     hub::BF16Solver bf16_;
 };
+
+#endif

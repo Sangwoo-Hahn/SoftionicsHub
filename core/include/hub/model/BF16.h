@@ -26,6 +26,10 @@ public:
     BF16Solver();
     void reset();
 
+    // runtime params
+    void set_params(double rc_r, double rc_c, double ema_alpha, double quiet_err_thresh);
+    void get_params(double& rc_r, double& rc_c, double& ema_alpha, double& quiet_err_thresh) const;
+
     BF16Output update(const std::vector<float>& v);
 
     static std::array<Vec3d, NSENS> sensor_positions();

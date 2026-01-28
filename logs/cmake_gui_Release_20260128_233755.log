@@ -1,0 +1,156 @@
+MODE=gui
+CFG=Release
+QT_KIT=C:\Qt\6.10.1\msvc2022_64
+Qt6_DIR=C:\Qt\6.10.1\msvc2022_64\lib\cmake\Qt6
+BUILD_DIR=C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui
+
+Cleaning "C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui"
+--------------------------------------------------
+Running: git submodule update --init --recursive
+--------------------------------------------------
+Running: cmake -S . -B "C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui" -G "Visual Studio 17 2022" -A x64 -DCMAKE_PREFIX_PATH="C:\Qt\6.10.1\msvc2022_64" -DQt6_DIR="C:\Qt\6.10.1\msvc2022_64\lib\cmake\Qt6"
+-- The C compiler identification is MSVC 19.44.35216.0
+-- The CXX compiler identification is MSVC 19.44.35216.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test COMPILER_HAS_DEPRECATED_ATTR
+-- Performing Test COMPILER_HAS_DEPRECATED_ATTR - Failed
+-- Performing Test COMPILER_HAS_DEPRECATED
+-- Performing Test COMPILER_HAS_DEPRECATED - Success
+-- Windows Host Detected
+-- Applying definition: SIMPLEBLE_LOG_LEVEL=SIMPLEBLE_LOG_LEVEL_INFO
+-- Applying definition: SIMPLEBLE_VERSION="0.11.0"
+-- Applying definition: FMT_HEADER_ONLY
+-- Applying definition: /D_WIN32_WINNT=0x0A00
+-- Applying definition: /D_USE_MATH_DEFINES
+-- Applying private compile option: /utf-8
+-- Applying private compile option: /Gd
+-- Applying private compile option: /EHsc
+-- Applying private compile option: /WX
+-- Applying private compile option: /W1
+-- Applying definition: SIMPLEBLE_LOG_LEVEL=SIMPLEBLE_LOG_LEVEL_INFO
+-- Applying definition: SIMPLEBLE_VERSION="0.11.0"
+-- Applying definition: FMT_HEADER_ONLY
+-- Applying definition: /D_WIN32_WINNT=0x0A00
+-- Applying definition: /D_USE_MATH_DEFINES
+-- Applying private compile option: /utf-8
+-- Applying private compile option: /Gd
+-- Applying private compile option: /EHsc
+-- Applying private compile option: /WX
+-- Applying private compile option: /W1
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - not found
+-- Found Threads: TRUE
+-- Performing Test HAVE_STDATOMIC
+-- Performing Test HAVE_STDATOMIC - Success
+-- Found WrapAtomic: TRUE
+-- Could NOT find WrapVulkanHeaders (missing: Vulkan_INCLUDE_DIR) 
+-- Could NOT find WrapVulkanHeaders (missing: Vulkan_INCLUDE_DIR) 
+-- Configuring done (10.0s)
+-- Generating done (0.4s)
+-- Build files have been written to: C:/Users/sangw/OneDrive/_softionics/_Programming/2026/SoftionicsHub/build_gui
+--------------------------------------------------
+Running: cmake --build "C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui" --config Release --target softionics_hub_gui
+msbuild 버전 17.14.23+b0019275e(.NET Framework용)
+
+  1>Checking Build System
+  Building Custom Rule C:/Users/sangw/OneDrive/_softionics/_Programming/2026/SoftionicsHub/third_party/simpleble/simpleble/CMakeLists.txt
+  Advanced.cpp
+  Adapter.cpp
+  Peripheral.cpp
+  Service.cpp
+  Characteristic.cpp
+  Descriptor.cpp
+  Backend.cpp
+  AdapterBase.cpp
+  ServiceBase.cpp
+  CharacteristicBase.cpp
+  DescriptorBase.cpp
+  Config.cpp
+  Exceptions.cpp
+  Logging.cpp
+  AdapterSafe.cpp
+  PeripheralSafe.cpp
+  AdapterWindows.cpp
+  PeripheralWindows.cpp
+  BackendWinRT.cpp
+  MtaManager.cpp
+  코드를 생성하고 있습니다...
+  컴파일하고 있습니다...
+  UsbHelper.cpp
+  BackendDongl.cpp
+  AdapterDongl.cpp
+  PeripheralDongl.cpp
+  Protocol.cpp
+  ProtocolBase.cpp
+  Wire.cpp
+  UsbHelperWindows.cpp
+  코드를 생성하고 있습니다...
+  Utils.cpp
+  Utils.cpp
+  pb_common.c
+  pb_decode.c
+  pb_encode.c
+  d2h.pb.c
+  h2d.pb.c
+  basic.pb.c
+  simpleble.pb.c
+  코드를 생성하고 있습니다...
+  simpleble.vcxproj -> C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\simpleble\Release\simpleble.lib
+  Building Custom Rule C:/Users/sangw/OneDrive/_softionics/_Programming/2026/SoftionicsHub/CMakeLists.txt
+  Framer.cpp
+  Parser.cpp
+  Pipeline.cpp
+  EMA.cpp
+  MA.cpp
+  Notch60.cpp
+  Bias.cpp
+  Linear.cpp
+  BF16.cpp
+  코드를 생성하고 있습니다...
+  hub_core.vcxproj -> C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\Release\hub_core.lib
+  Automatic MOC and UIC for target softionics_hub_gui
+  Building Custom Rule C:/Users/sangw/OneDrive/_softionics/_Programming/2026/SoftionicsHub/CMakeLists.txt
+  main.cpp
+  MainWindow.cpp
+  BleWorker.cpp
+  BF16Window.cpp
+  mocs_compilation_Release.cpp
+  코드를 생성하고 있습니다...
+MainWindow.obj : error LNK2019: "public: __cdecl BleWorker::BleWorker(class QObject *)" (??0BleWorker@@QEAA@PEAVQObject@@@Z)"public: __cdecl MainWindow::MainWindow(class QWidget *)" (??0MainWindow@@QEAA@PEAVQWidget@@@Z) 함수에서 참조되는 확인할 수 없는 외부 기호 [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+mocs_compilation_Release.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: __cdecl BleWorker::BleWorker(class QObject *)" (??0BleWorker@@QEAA@PEAVQObject@@@Z) [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+MainWindow.obj : error LNK2019: "public: void __cdecl BleWorker::startAuto(class QString)" (?startAuto@BleWorker@@QEAAXVQString@@@Z)"public: static void __cdecl QtPrivate::FunctorCallable<class `public: __cdecl MainWindow::MainWindow(class QWidget *)'::`2'::<lambda_1> >::call<struct QtPrivate::List<>,void>(class `public: __cdecl MainWindow::MainWindow(class QWidget *)'::`2'::<lambda_1> &,void *,void * *)" (??$call@U?$List@$$V@QtPrivate@@X@?$FunctorCallable@V<lambda_1>@?1???0MainWindow@@QEAA@PEAVQWidget@@@Z@$$V@QtPrivate@@SAXAEAV<lambda_1>@?1???0MainWindow@@QEAA@PEAVQWidget@@@Z@PEAXPEAPEAX@Z) 함수에서 참조되는 확인할 수 없는 외부 기호 [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+mocs_compilation_Release.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: void __cdecl BleWorker::startAuto(class QString)" (?startAuto@BleWorker@@QEAAXVQString@@@Z) [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+MainWindow.obj : error LNK2019: "public: void __cdecl BleWorker::connectToIndex(int)" (?connectToIndex@BleWorker@@QEAAXH@Z)"public: static void __cdecl QtPrivate::FunctorCallable<class `private: void __cdecl MainWindow::onDeviceClicked(class QListWidgetItem *)'::`2'::<lambda_1> >::call<struct QtPrivate::List<>,void>(class `private: void __cdecl MainWindow::onDeviceClicked(class QListWidgetItem *)'::`2'::<lambda_1> &,void *,void * *)" (??$call@U?$List@$$V@QtPrivate@@X@?$FunctorCallable@V<lambda_1>@?1??onDeviceClicked@MainWindow@@AEAAXPEAVQListWidgetItem@@@Z@$$V@QtPrivate@@SAXAEAV<lambda_1>@?1??onDeviceClicked@MainWindow@@AEAAXPEAVQListWidgetItem@@@Z@PEAXPEAPEAX@Z) 함수에서 참조되는 확인할 수 없는 외부 기호 [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+mocs_compilation_Release.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: void __cdecl BleWorker::connectToIndex(int)" (?connectToIndex@BleWorker@@QEAAXH@Z) [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+MainWindow.obj : error LNK2019: "public: void __cdecl BleWorker::setPipelineConfig(struct hub::PipelineConfig)" (?setPipelineConfig@BleWorker@@QEAAXUPipelineConfig@hub@@@Z)"public: static void __cdecl QtPrivate::FunctorCallable<class `private: void __cdecl MainWindow::applyPipelineNow(void)'::`2'::<lambda_1> >::call<struct QtPrivate::List<>,void>(class `private: void __cdecl MainWindow::applyPipelineNow(void)'::`2'::<lambda_1> &,void *,void * *)" (??$call@U?$List@$$V@QtPrivate@@X@?$FunctorCallable@V<lambda_1>@?1??applyPipelineNow@MainWindow@@AEAAXXZ@$$V@QtPrivate@@SAXAEAV<lambda_1>@?1??applyPipelineNow@MainWindow@@AEAAXXZ@PEAXPEAPEAX@Z) 함수에서 참조되는 확인할 수 없는 외부 기호 [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+mocs_compilation_Release.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: void __cdecl BleWorker::setPipelineConfig(struct hub::PipelineConfig)" (?setPipelineConfig@BleWorker@@QEAAXUPipelineConfig@hub@@@Z) [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+MainWindow.obj : error LNK2019: "public: void __cdecl BleWorker::startBiasCapture(int)" (?startBiasCapture@BleWorker@@QEAAXH@Z)"public: static void __cdecl QtPrivate::FunctorCallable<class `private: void __cdecl MainWindow::onBiasCapture(void)'::`2'::<lambda_1> >::call<struct QtPrivate::List<>,void>(class `private: void __cdecl MainWindow::onBiasCapture(void)'::`2'::<lambda_1> &,void *,void * *)" (??$call@U?$List@$$V@QtPrivate@@X@?$FunctorCallable@V<lambda_1>@?1??onBiasCapture@MainWindow@@AEAAXXZ@$$V@QtPrivate@@SAXAEAV<lambda_1>@?1??onBiasCapture@MainWindow@@AEAAXXZ@PEAXPEAPEAX@Z) 함수에서 참조되는 확인할 수 없는 외부 기호 [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+mocs_compilation_Release.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: void __cdecl BleWorker::startBiasCapture(int)" (?startBiasCapture@BleWorker@@QEAAXH@Z) [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+MainWindow.obj : error LNK2019: "public: void __cdecl BleWorker::startCsv(class QString)" (?startCsv@BleWorker@@QEAAXVQString@@@Z)"public: static void __cdecl QtPrivate::FunctorCallable<class `private: void __cdecl MainWindow::onToggleRecord(bool)'::`5'::<lambda_1> >::call<struct QtPrivate::List<>,void>(class `private: void __cdecl MainWindow::onToggleRecord(bool)'::`5'::<lambda_1> &,void *,void * *)" (??$call@U?$List@$$V@QtPrivate@@X@?$FunctorCallable@V<lambda_1>@?4??onToggleRecord@MainWindow@@AEAAX_N@Z@$$V@QtPrivate@@SAXAEAV<lambda_1>@?4??onToggleRecord@MainWindow@@AEAAX_N@Z@PEAXPEAPEAX@Z) 함수에서 참조되는 확인할 수 없는 외부 기호 [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+mocs_compilation_Release.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: void __cdecl BleWorker::startCsv(class QString)" (?startCsv@BleWorker@@QEAAXVQString@@@Z) [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+MainWindow.obj : error LNK2019: "public: void __cdecl BleWorker::stopCsv(void)" (?stopCsv@BleWorker@@QEAAXXZ)"public: static void __cdecl QtPrivate::FunctorCallable<class `private: void __cdecl MainWindow::onToggleRecord(bool)'::`12'::<lambda_2> >::call<struct QtPrivate::List<>,void>(class `private: void __cdecl MainWindow::onToggleRecord(bool)'::`12'::<lambda_2> &,void *,void * *)" (??$call@U?$List@$$V@QtPrivate@@X@?$FunctorCallable@V<lambda_2>@?M@??onToggleRecord@MainWindow@@AEAAX_N@Z@$$V@QtPrivate@@SAXAEAV<lambda_2>@?M@??onToggleRecord@MainWindow@@AEAAX_N@Z@PEAXPEAPEAX@Z) 함수에서 참조되는 확인할 수 없는 외부 기호 [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+mocs_compilation_Release.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: void __cdecl BleWorker::stopCsv(void)" (?stopCsv@BleWorker@@QEAAXXZ) [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+MainWindow.obj : error LNK2019: "public: void __cdecl BleWorker::saveBiasCsv(class QString)" (?saveBiasCsv@BleWorker@@QEAAXVQString@@@Z)"public: static void __cdecl QtPrivate::FunctorCallable<class `private: void __cdecl MainWindow::onBiasSave(void)'::`2'::<lambda_1> >::call<struct QtPrivate::List<>,void>(class `private: void __cdecl MainWindow::onBiasSave(void)'::`2'::<lambda_1> &,void *,void * *)" (??$call@U?$List@$$V@QtPrivate@@X@?$FunctorCallable@V<lambda_1>@?1??onBiasSave@MainWindow@@AEAAXXZ@$$V@QtPrivate@@SAXAEAV<lambda_1>@?1??onBiasSave@MainWindow@@AEAAXXZ@PEAXPEAPEAX@Z) 함수에서 참조되는 확인할 수 없는 외부 기호 [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+mocs_compilation_Release.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: void __cdecl BleWorker::saveBiasCsv(class QString)" (?saveBiasCsv@BleWorker@@QEAAXVQString@@@Z) [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+BF16Window.obj : error LNK2019: "public: void __cdecl BleWorker::setBF16Enabled(bool)" (?setBF16Enabled@BleWorker@@QEAAX_N@Z)"public: static void __cdecl QtPrivate::FunctorCallable<class `public: __cdecl BF16Window::BF16Window(class BleWorker *,class QWidget *)'::`2'::<lambda_1> >::call<struct QtPrivate::List<>,void>(class `public: __cdecl BF16Window::BF16Window(class BleWorker *,class QWidget *)'::`2'::<lambda_1> &,void *,void * *)" (??$call@U?$List@$$V@QtPrivate@@X@?$FunctorCallable@V<lambda_1>@?1???0BF16Window@@QEAA@PEAVBleWorker@@PEAVQWidget@@@Z@$$V@QtPrivate@@SAXAEAV<lambda_1>@?1???0BF16Window@@QEAA@PEAVBleWorker@@PEAVQWidget@@@Z@PEAXPEAPEAX@Z) 함수에서 참조되는 확인할 수 없는 외부 기호 [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+mocs_compilation_Release.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: void __cdecl BleWorker::setBF16Enabled(bool)" (?setBF16Enabled@BleWorker@@QEAAX_N@Z) [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+BF16Window.obj : error LNK2019: "public: void __cdecl BleWorker::setBF16Params(double,double,double,double)" (?setBF16Params@BleWorker@@QEAAXNNNN@Z)"public: static void __cdecl QtPrivate::FunctorCallable<class `private: void __cdecl BF16Window::onParamsChanged(void)'::`2'::<lambda_1> >::call<struct QtPrivate::List<>,void>(class `private: void __cdecl BF16Window::onParamsChanged(void)'::`2'::<lambda_1> &,void *,void * *)" (??$call@U?$List@$$V@QtPrivate@@X@?$FunctorCallable@V<lambda_1>@?1??onParamsChanged@BF16Window@@AEAAXXZ@$$V@QtPrivate@@SAXAEAV<lambda_1>@?1??onParamsChanged@BF16Window@@AEAAXXZ@PEAXPEAPEAX@Z) 함수에서 참조되는 확인할 수 없는 외부 기호 [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+mocs_compilation_Release.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: void __cdecl BleWorker::setBF16Params(double,double,double,double)" (?setBF16Params@BleWorker@@QEAAXNNNN@Z) [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+BF16Window.obj : error LNK2019: "public: void __cdecl BleWorker::resetBF16(void)" (?resetBF16@BleWorker@@QEAAXXZ)"public: static void __cdecl QtPrivate::FunctorCallable<class `private: void __cdecl BF16Window::onResetSolver(void)'::`2'::<lambda_1> >::call<struct QtPrivate::List<>,void>(class `private: void __cdecl BF16Window::onResetSolver(void)'::`2'::<lambda_1> &,void *,void * *)" (??$call@U?$List@$$V@QtPrivate@@X@?$FunctorCallable@V<lambda_1>@?1??onResetSolver@BF16Window@@AEAAXXZ@$$V@QtPrivate@@SAXAEAV<lambda_1>@?1??onResetSolver@BF16Window@@AEAAXXZ@PEAXPEAPEAX@Z) 함수에서 참조되는 확인할 수 없는 외부 기호 [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+mocs_compilation_Release.obj : error LNK2001: 확인할 수 없는 외부 기호 "public: void __cdecl BleWorker::resetBF16(void)" (?resetBF16@BleWorker@@QEAAXXZ) [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+mocs_compilation_Release.obj : error LNK2019: "public: void __cdecl BleWorker::disconnectDevice(void)" (?disconnectDevice@BleWorker@@QEAAXXZ)"private: static void __cdecl BleWorker::qt_static_metacall(class QObject *,enum QMetaObject::Call,int,void * *)" (?qt_static_metacall@BleWorker@@CAXPEAVQObject@@W4Call@QMetaObject@@HPEAPEAX@Z) 함수에서 참조되는 확인할 수 없는 외부 기호 [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\Release\softionics_hub_gui.exe : fatal error LNK1120: 12개의 확인할 수 없는 외부 참조입니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+FAILED: cmake --build "C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui" --config Release --target softionics_hub_gui
