@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstring>
+#include <QMetaObject>
 
 static inline uint64_t now_ns() {
     using namespace std::chrono;
@@ -122,12 +123,14 @@ void BleWorker::connectToIndex(int index) {
     }
 
     try {
+        // ✅ 같은 장치 재클릭으로 disconnect 토글하지 않음 (아무 것도 안 함)
         if (connected_.load() && active_ && active_->address() == p.address()) {
-            disconnectDevice();
+            emit statusText("Already connected");
             if (wasScanning) startScanning();
             return;
         }
 
+        // 다른 장치면 기존 연결은 끊고 새로 연결
         if (connected_.load()) disconnectDevice();
 
         emit statusText("Connecting...");
@@ -144,6 +147,17 @@ void BleWorker::connectToIndex(int index) {
         active_ = p;
         svc_ = pair->first;
         chr_ = pair->second;
+
+        // ✅ 물리적 끊김 자동 감지
+        try {
+            active_->set_callback_on_disconnected([this]() {
+                if (quitting_.load()) return;
+                QMetaObject::invokeMethod(this, [this]() {
+                    if (quitting_.load()) return;
+                    disconnectDevice();
+                }, Qt::QueuedConnection);
+            });
+        } catch (...) {}
 
         {
             QMutexLocker lk(&pipeMu_);
@@ -166,16 +180,17 @@ void BleWorker::connectToIndex(int index) {
 
         emit connected(QString::fromStdString(p.identifier()), QString::fromStdString(p.address()));
         emit statusText("Connected");
-
     } catch (...) {
         emit statusText("Connect failed");
     }
 
+    // 스캔은 항상 유지
     if (wasScanning) startScanning();
 }
 
 void BleWorker::disconnectDevice() {
-    if (!connected_.load()) return;
+    // 중복/재진입 방지
+    if (!connected_.exchange(false)) return;
 
     try { notifyStop(); } catch (...) {}
     try { if (active_) active_->disconnect(); } catch (...) {}
@@ -183,7 +198,6 @@ void BleWorker::disconnectDevice() {
     active_.reset();
     svc_.reset();
     chr_.reset();
-    connected_.store(false);
 
     stopCsv();
 
@@ -199,6 +213,9 @@ void BleWorker::disconnectDevice() {
 
     emit disconnected();
     emit statusText("Scanning...");
+
+    // 스캔이 꺼져있을 수도 있으니 보장
+    if (adapter_ && !scanning_.load() && !quitting_.load()) startScanning();
 }
 
 void BleWorker::notifyStart() {

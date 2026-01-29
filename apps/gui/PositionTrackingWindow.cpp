@@ -2,6 +2,7 @@
 #include "BleWorker.h"
 #include "PositionTrackingEngine.h"
 #include "hub/model/BruteForce_16x2.h"
+#include "FormatDoubleSpinBox.h"
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -9,7 +10,9 @@
 #include <QGroupBox>
 #include <QPainter>
 #include <QRectF>
+#include <QSizePolicy>
 #include <algorithm>
+#include <cmath>
 
 PositionTrackingWindow::PositionTrackingWindow(BleWorker* worker, QWidget* parent)
     : QMainWindow(parent), worker_(worker) {
@@ -28,9 +31,8 @@ PositionTrackingWindow::PositionTrackingWindow(BleWorker* worker, QWidget* paren
     timer_->start();
 
     auto algos = hub::pt::list_algorithms();
-    for (auto& a : algos) {
-        cbAlgo_->addItem(QString::fromStdString(a.id));
-    }
+    for (auto& a : algos) cbAlgo_->addItem(QString::fromStdString(a.id));
+
     if (cbAlgo_->count() > 0) {
         cbAlgo_->setCurrentIndex(0);
         onAlgoChanged(0);
@@ -73,7 +75,7 @@ void PositionTrackingWindow::closeEvent(QCloseEvent* e) {
 
 void PositionTrackingWindow::buildUi() {
     setWindowTitle("PositionTracking");
-    resize(1200, 820);
+    resize(1350, 980);
 
     auto* central = new QWidget(this);
     auto* root = new QHBoxLayout(central);
@@ -81,6 +83,7 @@ void PositionTrackingWindow::buildUi() {
     auto* split = new QSplitter(Qt::Horizontal, central);
     split->setChildrenCollapsible(false);
 
+    // ---- plot ----
     auto* plotW = new QWidget(split);
     auto* plotL = new QVBoxLayout(plotW);
 
@@ -124,8 +127,9 @@ void PositionTrackingWindow::buildUi() {
 
     split->addWidget(plotW);
 
+    // ---- controls ----
     auto* ctrlW = new QWidget(split);
-    ctrlW->setMinimumWidth(420);
+    ctrlW->setMinimumWidth(520);
     auto* ctrlL = new QVBoxLayout(ctrlW);
 
     auto* gSel = new QGroupBox("Model", ctrlW);
@@ -137,25 +141,32 @@ void PositionTrackingWindow::buildUi() {
 
     selL->addWidget(cbAlgo_);
     selL->addWidget(lbAlgoInfo_);
-    ctrlL->addWidget(gSel);
+    ctrlL->addWidget(gSel, 0);
 
     auto* gParams = new QGroupBox("Params", ctrlW);
+    gParams->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     auto* gPL = new QVBoxLayout(gParams);
 
     auto* scroll = new QScrollArea(gParams);
     scroll->setWidgetResizable(true);
+    scroll->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    scroll->setMinimumHeight(720);
 
     paramBox_ = new QWidget(scroll);
     paramForm_ = new QFormLayout(paramBox_);
+    paramForm_->setVerticalSpacing(10);
+    paramForm_->setHorizontalSpacing(12);
+    paramForm_->setFormAlignment(Qt::AlignTop);
+    paramForm_->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     paramBox_->setLayout(paramForm_);
     scroll->setWidget(paramBox_);
 
-    gPL->addWidget(scroll);
+    gPL->addWidget(scroll, 1);
 
     btnApply_ = new QPushButton("Apply", gParams);
-    gPL->addWidget(btnApply_);
+    gPL->addWidget(btnApply_, 0);
 
-    ctrlL->addWidget(gParams);
+    ctrlL->addWidget(gParams, 1);
 
     auto* gTools = new QGroupBox("Tools", ctrlW);
     auto* tL = new QVBoxLayout(gTools);
@@ -167,11 +178,12 @@ void PositionTrackingWindow::buildUi() {
     btnReset_ = new QPushButton("Reset", gTools);
     btnClear_ = new QPushButton("Clear Path", gTools);
 
+    tL->addWidget(new QLabel("Path points", gTools));
     tL->addWidget(spPathLen_);
     tL->addWidget(btnReset_);
     tL->addWidget(btnClear_);
-    ctrlL->addWidget(gTools);
 
+    ctrlL->addWidget(gTools, 0);
     ctrlL->addStretch(1);
 
     connect(cbAlgo_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PositionTrackingWindow::onAlgoChanged);
@@ -180,8 +192,9 @@ void PositionTrackingWindow::buildUi() {
     connect(btnClear_, &QPushButton::clicked, this, &PositionTrackingWindow::onClearPath);
 
     split->addWidget(ctrlW);
-    split->setStretchFactor(0, 10);
-    split->setStretchFactor(1, 4);
+
+    split->setStretchFactor(0, 12);
+    split->setStretchFactor(1, 6);
 
     root->addWidget(split);
     setCentralWidget(central);
@@ -189,8 +202,10 @@ void PositionTrackingWindow::buildUi() {
 
 void PositionTrackingWindow::onAlgoChanged(int idx) {
     if (idx < 0) return;
+
     std::string id = cbAlgo_->itemText(idx).toStdString();
     curInfo_ = hub::pt::get_algorithm_info(id);
+
     lbAlgoInfo_->setText(QString("id=%1  N=%2  M=%3")
         .arg(QString::fromStdString(curInfo_.id))
         .arg(curInfo_.N)
@@ -216,20 +231,43 @@ void PositionTrackingWindow::onAlgoChanged(int idx) {
 }
 
 void PositionTrackingWindow::rebuildParamUi(const hub::pt::AlgoInfo& info) {
-    while (paramForm_->rowCount() > 0) {
-        paramForm_->removeRow(0);
-    }
+    while (paramForm_->rowCount() > 0) paramForm_->removeRow(0);
     paramSpins_.clear();
 
     for (size_t i = 0; i < info.params.size(); ++i) {
         const auto& p = info.params[i];
-        auto* sp = new QDoubleSpinBox(paramBox_);
+
+        auto* sp = new FormatDoubleSpinBox(paramBox_);
         sp->setRange(p.minv, p.maxv);
         sp->setValue(p.defv);
+        sp->setMinimumWidth(260);
+        sp->setMinimumHeight(28);
 
-        double span = std::fabs(p.maxv - p.minv);
-        if (span >= 1e6) sp->setDecimals(0);
-        else sp->setDecimals(8);
+        // ✅ R/C: scientific + 내부 decimals 18 (0으로 안 죽음) + stepBy()가 ×10/÷10
+        if (p.key == "rc_r" || p.key == "rc_c") {
+            sp->setMode(FormatDoubleSpinBox::Mode::Scientific);
+            sp->setSciDigits(6, 18);
+        }
+        // ✅ 나머지: fixed(decimal). 특히 step은 0.001이므로 최소 6자리 확보
+        else {
+            sp->setMode(FormatDoubleSpinBox::Mode::Fixed);
+
+            if (p.key == "ema_a") {
+                sp->setFixedDecimals(4);
+                sp->setSingleStep(0.01);
+            } else if (p.key == "quiet") {
+                sp->setFixedDecimals(6);
+                sp->setSingleStep(0.05);
+            } else if (p.key == "step") {
+                sp->setFixedDecimals(6);       // 0.001000 표시/저장 가능
+                sp->setSingleStep(0.0001);
+            } else if (p.key == "xmin" || p.key == "xmax" || p.key == "ymin" || p.key == "ymax" || p.key == "zmin" || p.key == "zmax") {
+                sp->setFixedDecimals(5);
+                sp->setSingleStep(0.001);
+            } else {
+                sp->setFixedDecimals(8);
+            }
+        }
 
         paramForm_->addRow(QString::fromStdString(p.label), sp);
         paramSpins_.push_back(sp);
@@ -305,8 +343,8 @@ void PositionTrackingWindow::updateAxesAndDraw() {
         lbStats_->setText("waiting...");
     }
 
-    double minx = -0.06, maxx = 0.06;
-    double miny = -0.06, maxy = 0.06;
+    double minx = -0.03, maxx = 0.03;
+    double miny = -0.03, maxy = 0.03;
 
     if (curInfo_.N == 16) {
         auto sens = hub::BruteForce_16x2Solver::sensor_positions();

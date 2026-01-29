@@ -22,9 +22,6 @@ static void ensure_registered() {
     auto& reg = registry();
     if (!reg.empty()) return;
 
-    // -------------------------
-    // BruteForce_16x2
-    // -------------------------
     class BruteForce_16x2 final : public IAlgorithm {
     public:
         BruteForce_16x2() {
@@ -41,18 +38,21 @@ static void ensure_registered() {
 
         std::vector<ParamDesc> params() const override {
             return {
+                // ---- R,C: scientific notation in UI (handled in PositionTrackingWindow) ----
                 {"rc_r",   "RC_R (Ohm)",        1e3,   1e14,  1e8},
                 {"rc_c",   "RC_C (F)",          1e-18, 1e-3,  5e-10},
+
                 {"ema_a",  "EMA alpha",         0.0,   1.0,   0.2},
                 {"quiet",  "Quiet err thresh",  0.0,   1e6,   0.3},
 
-                {"xmin", "Grid x min", -1.0, 1.0, -0.06},
-                {"xmax", "Grid x max", -1.0, 1.0,  0.06},
-                {"ymin", "Grid y min", -1.0, 1.0, -0.06},
-                {"ymax", "Grid y max", -1.0, 1.0,  0.06},
+                // ---- default grid: x/y = ±0.03, z fixed at 0.01, step = 0.001 ----
+                {"xmin", "Grid x min", -1.0, 1.0, -0.03},
+                {"xmax", "Grid x max", -1.0, 1.0,  0.03},
+                {"ymin", "Grid y min", -1.0, 1.0, -0.03},
+                {"ymax", "Grid y max", -1.0, 1.0,  0.03},
                 {"zmin", "Grid z min", -1.0, 1.0,  0.01},
-                {"zmax", "Grid z max", -1.0, 1.0,  0.10},
-                {"step", "Grid step",  1e-6, 0.1,  0.01},
+                {"zmax", "Grid z max", -1.0, 1.0,  0.01},
+                {"step", "Grid step",  1e-6, 0.1,  0.001}
             };
         }
 
@@ -117,8 +117,6 @@ static void ensure_registered() {
     }
     e.factory = []() { return std::make_unique<BruteForce_16x2>(); };
     reg.push_back(std::move(e));
-
-    // 여기에 새 알고리즘들을 계속 추가하면 됨
 }
 
 std::vector<AlgoInfo> list_algorithms() {

@@ -1,0 +1,89 @@
+CFG=Release
+PRESET=win-local-qt
+
+--------------------------------------------------
+Running: git submodule update --init --recursive
+--------------------------------------------------
+Running: cmake --preset "win-local-qt" --fresh
+Preset CMake variables:
+
+  CMAKE_BUILD_TYPE="Release"
+  CMAKE_CXX_STANDARD="17"
+  CMAKE_PREFIX_PATH="C:/Qt/6.10.2/msvc2022_64"
+  Qt6_DIR="C:/Qt/6.10.2/msvc2022_64/lib/cmake/Qt6"
+
+-- Selecting Windows SDK version 10.0.22621.0 to target Windows 10.0.26100.
+-- The C compiler identification is MSVC 19.42.34433.0
+-- The CXX compiler identification is MSVC 19.42.34433.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.42.34433/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.42.34433/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test COMPILER_HAS_DEPRECATED_ATTR
+-- Performing Test COMPILER_HAS_DEPRECATED_ATTR - Failed
+-- Performing Test COMPILER_HAS_DEPRECATED
+-- Performing Test COMPILER_HAS_DEPRECATED - Success
+-- Windows Host Detected
+-- Applying definition: SIMPLEBLE_LOG_LEVEL=SIMPLEBLE_LOG_LEVEL_INFO
+-- Applying definition: SIMPLEBLE_VERSION="0.11.0"
+-- Applying definition: FMT_HEADER_ONLY
+-- Applying definition: /D_WIN32_WINNT=0x0A00
+-- Applying definition: /D_USE_MATH_DEFINES
+-- Applying private compile option: /utf-8
+-- Applying private compile option: /Gd
+-- Applying private compile option: /EHsc
+-- Applying private compile option: /WX
+-- Applying private compile option: /W1
+-- Applying definition: SIMPLEBLE_LOG_LEVEL=SIMPLEBLE_LOG_LEVEL_INFO
+-- Applying definition: SIMPLEBLE_VERSION="0.11.0"
+-- Applying definition: FMT_HEADER_ONLY
+-- Applying definition: /D_WIN32_WINNT=0x0A00
+-- Applying definition: /D_USE_MATH_DEFINES
+-- Applying private compile option: /utf-8
+-- Applying private compile option: /Gd
+-- Applying private compile option: /EHsc
+-- Applying private compile option: /WX
+-- Applying private compile option: /W1
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - not found
+-- Found Threads: TRUE
+-- Performing Test HAVE_STDATOMIC
+-- Performing Test HAVE_STDATOMIC - Success
+-- Found WrapAtomic: TRUE
+-- Could NOT find WrapVulkanHeaders (missing: Vulkan_INCLUDE_DIR) 
+-- Could NOT find WrapVulkanHeaders (missing: Vulkan_INCLUDE_DIR) 
+-- Configuring done (6.1s)
+-- Generating done (0.5s)
+CMake Warning:
+  Manually-specified variables were not used by the project:
+
+    CMAKE_BUILD_TYPE
+
+
+-- Build files have been written to: C:/Users/sangw/Desktop/My files/Programming/SoftionicsHub/build_gui
+--------------------------------------------------
+Running: cmake --build --preset "win-local-qt"
+msbuild 버전 17.12.6+db5f6012c(.NET Framework용)
+
+  simpleble.vcxproj -> C:\Users\sangw\Desktop\My files\Programming\SoftionicsHub\build_gui\simpleble\Release\simpleble.lib
+  hub_core.vcxproj -> C:\Users\sangw\Desktop\My files\Programming\SoftionicsHub\build_gui\Release\hub_core.lib
+  Automatic MOC and UIC for target softionics_hub_gui
+  PositionTrackingWindow.cpp
+C:\Users\sangw\Desktop\My files\Programming\SoftionicsHub\apps\gui\PositionTrackingWindow.cpp(249,17): error C2660: 'FormatDoubleSpinBox::setSciDigits': 함수는 2개의 인수를 사용하지 않습니다. [C:\Users\sangw\Desktop\My files\Programming\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  mocs_compilation_Release.cpp
+      C:\Users\sangw\Desktop\My files\Programming\SoftionicsHub\apps\gui\FormatDoubleSpinBox.h(22,10):
+      'FormatDoubleSpinBox::setSciDigits' 선언을 참조하십시오.
+      C:\Users\sangw\Desktop\My files\Programming\SoftionicsHub\apps\gui\PositionTrackingWindow.cpp(249,17):
+      인수 목록 '(int, int)'을(를) 일치시키는 동안
+  
+  코드를 생성하고 있습니다...

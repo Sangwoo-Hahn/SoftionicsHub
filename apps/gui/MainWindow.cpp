@@ -10,11 +10,40 @@
 #include <QPainter>
 #include <QAbstractItemView>
 #include <QtCore/QOverload>
+#include <QStyledItemDelegate>
+#include <QStyleOptionViewItem>
 #include <QColor>
 #include <QBrush>
 
 #include <algorithm>
 #include <cmath>
+
+static constexpr int ROLE_ADDR       = Qt::UserRole;
+static constexpr int ROLE_STATE      = Qt::UserRole + 1;   // 0 normal, 1 connected, 2 connecting
+static constexpr int ROLE_SCAN_INDEX = Qt::UserRole + 2;   // -1 pinned
+static constexpr int ROLE_NAME       = Qt::UserRole + 3;
+
+class DeviceItemDelegate : public QStyledItemDelegate {
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    void paint(QPainter* painter, const QStyleOptionViewItem& option, const QModelIndex& index) const override {
+        QStyleOptionViewItem opt = option;
+        initStyleOption(&opt, index);
+        QStyledItemDelegate::paint(painter, opt, index);
+
+        int st = index.data(ROLE_STATE).toInt();
+        if (st == 1) {
+            painter->save();
+            QPen pen(QColor(0, 120, 215));
+            pen.setWidth(2);
+            painter->setPen(pen);
+            QRect r = option.rect.adjusted(2, 2, -2, -2);
+            painter->drawRoundedRect(r, 6, 6);
+            painter->restore();
+        }
+    }
+};
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     worker_ = new BleWorker();
@@ -33,7 +62,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     buildUi();
 
     plotTimer_ = new QTimer(this);
-    plotTimer_->setInterval(50); // 20fps UI update (샘플은 누적)
+    plotTimer_->setInterval(33); // 30fps redraw
     connect(plotTimer_, &QTimer::timeout, this, &MainWindow::onPlotTick);
     plotTimer_->start();
 
@@ -44,7 +73,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
     connectTimeout_ = new QTimer(this);
     connectTimeout_->setSingleShot(true);
-    connectTimeout_->setInterval(8000); // 8초 타임아웃
+    connectTimeout_->setInterval(8000);
     connect(connectTimeout_, &QTimer::timeout, this, [this]() {
         if (!connecting_) return;
         status_->setText("Connect timeout");
@@ -53,6 +82,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
 
     QMetaObject::invokeMethod(worker_, [w = worker_]() { w->startAuto("Softionics"); }, Qt::QueuedConnection);
     applyPipelineNow();
+
+    clearPlotData();
 }
 
 MainWindow::~MainWindow() {
@@ -77,9 +108,7 @@ void MainWindow::buildUi() {
     auto* split = new QSplitter(Qt::Horizontal, central);
     split->setChildrenCollapsible(false);
 
-    // --------------------
     // Left: Devices
-    // --------------------
     auto* devPanel = new QWidget(split);
     devPanel->setMinimumWidth(280);
     auto* devL = new QVBoxLayout(devPanel);
@@ -93,6 +122,7 @@ void MainWindow::buildUi() {
     list_->setSelectionMode(QAbstractItemView::NoSelection);
     list_->setFocusPolicy(Qt::NoFocus);
     list_->setMouseTracking(true);
+    list_->setItemDelegate(new DeviceItemDelegate(list_));
     connect(list_, &QListWidget::itemClicked, this, &MainWindow::onDeviceClicked);
 
     status_ = new QLabel("Scanning...", devPanel);
@@ -110,9 +140,7 @@ void MainWindow::buildUi() {
 
     split->addWidget(devPanel);
 
-    // --------------------
     // Middle: Chart
-    // --------------------
     auto* chartPanel = new QWidget(split);
     chartPanel->setMinimumWidth(900);
     auto* chartL = new QVBoxLayout(chartPanel);
@@ -125,8 +153,7 @@ void MainWindow::buildUi() {
     axX_->setRange(0.0, 1.0);
     axY_->setRange(-1.0, 1.0);
     axX_->setLabelFormat("%.3f");
-    axY_->setLabelFormat("%.6g");
-
+    axY_->setLabelFormat("%10.5f");
     chart_->addAxis(axX_, Qt::AlignBottom);
     chart_->addAxis(axY_, Qt::AlignLeft);
 
@@ -155,9 +182,7 @@ void MainWindow::buildUi() {
 
     split->addWidget(chartPanel);
 
-    // --------------------
-    // Right: Controls
-    // --------------------
+    // Right: Controls (간단히: 기존대로 유지)
     auto* ctrlPanel = new QWidget(split);
     ctrlPanel->setMinimumWidth(420);
     auto* ctrlL = new QVBoxLayout(ctrlPanel);
@@ -172,159 +197,149 @@ void MainWindow::buildUi() {
     auto* gPlot = new QGroupBox("Plot", ctrlPanel);
     auto* pL = new QVBoxLayout(gPlot);
 
-    auto* rowX = new QWidget(gPlot);
-    auto* rowXL = new QHBoxLayout(rowX);
-    rowXL->addWidget(new QLabel("X window (s)", rowX));
-    sp_xwin_ = new QDoubleSpinBox(rowX);
+    sp_xwin_ = new QDoubleSpinBox(gPlot);
     sp_xwin_->setRange(0.5, 120.0);
     sp_xwin_->setDecimals(2);
     sp_xwin_->setValue(1.0);
-    rowXL->addWidget(sp_xwin_);
-    rowXL->addStretch(1);
-    pL->addWidget(rowX);
 
-    auto* rowYc = new QWidget(gPlot);
-    auto* rowYcL = new QHBoxLayout(rowYc);
-    rowYcL->addWidget(new QLabel("Y center", rowYc));
-    sp_ycenter_ = new QDoubleSpinBox(rowYc);
+    sp_ycenter_ = new QDoubleSpinBox(gPlot);
     sp_ycenter_->setRange(-1e9, 1e9);
     sp_ycenter_->setDecimals(6);
     sp_ycenter_->setValue(0.0);
-    rowYcL->addWidget(sp_ycenter_);
-    rowYcL->addStretch(1);
-    pL->addWidget(rowYc);
 
-    auto* rowYa = new QWidget(gPlot);
-    auto* rowYaL = new QHBoxLayout(rowYa);
-    cb_yauto_ = new QCheckBox("Auto Y", rowYa);
+    cb_yauto_ = new QCheckBox("Auto Y", gPlot);
     cb_yauto_->setChecked(true);
-    rowYaL->addWidget(cb_yauto_);
-    rowYaL->addWidget(new QLabel("Y abs", rowYa));
-    sp_yabs_ = new QDoubleSpinBox(rowYa);
+
+    sp_yabs_ = new QDoubleSpinBox(gPlot);
     sp_yabs_->setRange(1e-12, 1e9);
     sp_yabs_->setDecimals(6);
     sp_yabs_->setValue(1.0);
     sp_yabs_->setEnabled(false);
-    rowYaL->addWidget(sp_yabs_);
-    rowYaL->addStretch(1);
-    pL->addWidget(rowYa);
 
     connect(cb_yauto_, &QCheckBox::toggled, this, [this](bool on) {
-        if (sp_yabs_) sp_yabs_->setEnabled(!on);
+        sp_yabs_->setEnabled(!on);
     });
+
+    auto* row1 = new QWidget(gPlot);
+    auto* r1 = new QHBoxLayout(row1);
+    r1->addWidget(new QLabel("X window (s)"));
+    r1->addWidget(sp_xwin_);
+    pL->addWidget(row1);
+
+    auto* row2 = new QWidget(gPlot);
+    auto* r2 = new QHBoxLayout(row2);
+    r2->addWidget(new QLabel("Y center"));
+    r2->addWidget(sp_ycenter_);
+    pL->addWidget(row2);
+
+    auto* row3 = new QWidget(gPlot);
+    auto* r3 = new QHBoxLayout(row3);
+    r3->addWidget(cb_yauto_);
+    r3->addWidget(new QLabel("Y abs"));
+    r3->addWidget(sp_yabs_);
+    pL->addWidget(row3);
 
     ctrlL->addWidget(gPlot);
 
     auto* gFilters = new QGroupBox("Filters", ctrlPanel);
     auto* fL = new QVBoxLayout(gFilters);
 
-    auto* rowMA = new QWidget(gFilters);
-    auto* rowMAL = new QHBoxLayout(rowMA);
-    cb_ma_ = new QCheckBox("MA", rowMA);
+    cb_ma_ = new QCheckBox("MA", gFilters);
     cb_ma_->setChecked(false);
-    sp_ma_ = new QSpinBox(rowMA);
+    sp_ma_ = new QSpinBox(gFilters);
     sp_ma_->setRange(1, 20000);
     sp_ma_->setValue(5);
-    rowMAL->addWidget(cb_ma_);
-    rowMAL->addWidget(sp_ma_);
-    rowMAL->addStretch(1);
-    fL->addWidget(rowMA);
 
-    auto* rowEMA = new QWidget(gFilters);
-    auto* rowEMAL = new QHBoxLayout(rowEMA);
-    cb_ema_ = new QCheckBox("EMA", rowEMA);
+    auto* maRow = new QWidget(gFilters);
+    auto* maL = new QHBoxLayout(maRow);
+    maL->addWidget(cb_ma_);
+    maL->addWidget(sp_ma_);
+    maL->addStretch(1);
+    fL->addWidget(maRow);
+
+    cb_ema_ = new QCheckBox("EMA", gFilters);
     cb_ema_->setChecked(false);
-    sp_alpha_ = new QDoubleSpinBox(rowEMA);
+    sp_alpha_ = new QDoubleSpinBox(gFilters);
     sp_alpha_->setRange(0.0, 1.0);
     sp_alpha_->setDecimals(4);
     sp_alpha_->setValue(0.2);
-    rowEMAL->addWidget(cb_ema_);
-    rowEMAL->addWidget(sp_alpha_);
-    rowEMAL->addStretch(1);
-    fL->addWidget(rowEMA);
 
-    auto* rowNotch = new QWidget(gFilters);
-    auto* rowNotchL = new QHBoxLayout(rowNotch);
-    cb_notch_ = new QCheckBox("Notch", rowNotch);
+    auto* emaRow = new QWidget(gFilters);
+    auto* emaL = new QHBoxLayout(emaRow);
+    emaL->addWidget(cb_ema_);
+    emaL->addWidget(sp_alpha_);
+    emaL->addStretch(1);
+    fL->addWidget(emaRow);
+
+    cb_notch_ = new QCheckBox("Notch", gFilters);
     cb_notch_->setChecked(false);
 
-    rowNotchL->addWidget(cb_notch_);
-    rowNotchL->addWidget(new QLabel("fs", rowNotch));
-    sp_fs_ = new QDoubleSpinBox(rowNotch);
+    sp_fs_ = new QDoubleSpinBox(gFilters);
     sp_fs_->setRange(10, 50000);
     sp_fs_->setDecimals(2);
     sp_fs_->setValue(200.0);
-    rowNotchL->addWidget(sp_fs_);
 
-    rowNotchL->addWidget(new QLabel("f0", rowNotch));
-    sp_f0_ = new QDoubleSpinBox(rowNotch);
+    sp_f0_ = new QDoubleSpinBox(gFilters);
     sp_f0_->setRange(1, 5000);
     sp_f0_->setDecimals(2);
     sp_f0_->setValue(60.0);
-    rowNotchL->addWidget(sp_f0_);
 
-    rowNotchL->addWidget(new QLabel("Q", rowNotch));
-    sp_q_ = new QDoubleSpinBox(rowNotch);
+    sp_q_ = new QDoubleSpinBox(gFilters);
     sp_q_->setRange(0.1, 2000);
     sp_q_->setDecimals(2);
     sp_q_->setValue(30.0);
-    rowNotchL->addWidget(sp_q_);
-    rowNotchL->addStretch(1);
-    fL->addWidget(rowNotch);
+
+    auto* notchRow = new QWidget(gFilters);
+    auto* notchL = new QHBoxLayout(notchRow);
+    notchL->addWidget(cb_notch_);
+    notchL->addWidget(new QLabel("fs"));
+    notchL->addWidget(sp_fs_);
+    notchL->addWidget(new QLabel("f0"));
+    notchL->addWidget(sp_f0_);
+    notchL->addWidget(new QLabel("Q"));
+    notchL->addWidget(sp_q_);
+    fL->addWidget(notchRow);
 
     ctrlL->addWidget(gFilters);
 
-    auto* gBias = new QGroupBox("Bias", ctrlPanel);
-    auto* bL = new QVBoxLayout(gBias);
-
-    auto* rowBias = new QWidget(gBias);
-    auto* rowBiasL = new QHBoxLayout(rowBias);
-    cb_bias_apply_ = new QCheckBox("Apply stored bias", rowBias);
+    cb_bias_apply_ = new QCheckBox("Apply stored bias", ctrlPanel);
     cb_bias_apply_->setChecked(false);
-
-    sp_bias_frames_ = new QSpinBox(rowBias);
+    sp_bias_frames_ = new QSpinBox(ctrlPanel);
     sp_bias_frames_->setRange(1, 2000000);
     sp_bias_frames_->setValue(200);
 
-    btn_bias_cap_ = new QPushButton("Capture", rowBias);
+    btn_bias_cap_ = new QPushButton("Capture", ctrlPanel);
     connect(btn_bias_cap_, &QPushButton::clicked, this, &MainWindow::onBiasCapture);
 
-    btn_bias_save_ = new QPushButton("Save CSV", rowBias);
+    btn_bias_save_ = new QPushButton("Save CSV", ctrlPanel);
     connect(btn_bias_save_, &QPushButton::clicked, this, &MainWindow::onBiasSave);
 
-    rowBiasL->addWidget(cb_bias_apply_);
-    rowBiasL->addWidget(sp_bias_frames_);
-    rowBiasL->addWidget(btn_bias_cap_);
-    rowBiasL->addWidget(btn_bias_save_);
-    rowBiasL->addStretch(1);
-    bL->addWidget(rowBias);
-
-    lb_bias_state_ = new QLabel("State: None", gBias);
+    lb_bias_state_ = new QLabel("State: None", ctrlPanel);
     lb_bias_state_->setObjectName("StatusLabel");
-    bL->addWidget(lb_bias_state_);
 
-    ctrlL->addWidget(gBias);
+    auto* biasRow = new QWidget(ctrlPanel);
+    auto* biasL = new QHBoxLayout(biasRow);
+    biasL->addWidget(cb_bias_apply_);
+    biasL->addWidget(sp_bias_frames_);
+    biasL->addWidget(btn_bias_cap_);
+    biasL->addWidget(btn_bias_save_);
+    ctrlL->addWidget(biasRow);
+    ctrlL->addWidget(lb_bias_state_);
 
-    auto* gRec = new QGroupBox("Record (CSV)", ctrlPanel);
-    auto* rL = new QVBoxLayout(gRec);
-
-    auto* rowRec = new QWidget(gRec);
-    auto* rowRecL = new QHBoxLayout(rowRec);
-    cb_record_ = new QCheckBox("Record", rowRec);
-
-    ed_csv_path_ = new QLineEdit(rowRec);
+    cb_record_ = new QCheckBox("Record", ctrlPanel);
+    ed_csv_path_ = new QLineEdit(ctrlPanel);
     ed_csv_path_->setReadOnly(true);
-
-    btn_browse_csv_ = new QPushButton("Browse", rowRec);
+    btn_browse_csv_ = new QPushButton("Browse", ctrlPanel);
     connect(btn_browse_csv_, &QPushButton::clicked, this, &MainWindow::onBrowseCsv);
     connect(cb_record_, &QCheckBox::toggled, this, &MainWindow::onToggleRecord);
 
-    rowRecL->addWidget(cb_record_);
-    rowRecL->addWidget(ed_csv_path_, 1);
-    rowRecL->addWidget(btn_browse_csv_);
-    rL->addWidget(rowRec);
+    auto* recRow = new QWidget(ctrlPanel);
+    auto* recL = new QHBoxLayout(recRow);
+    recL->addWidget(cb_record_);
+    recL->addWidget(ed_csv_path_, 1);
+    recL->addWidget(btn_browse_csv_);
+    ctrlL->addWidget(recRow);
 
-    ctrlL->addWidget(gRec);
     ctrlL->addStretch(1);
 
     auto applyHook = [this]() { onAnyControlChanged(); };
@@ -342,17 +357,13 @@ void MainWindow::buildUi() {
     connect(sp_alpha_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
 
     connect(cb_notch_, &QCheckBox::toggled, this, applyHook);
-    connect(sp_fs_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) {
-        clearPlotData();
-        onAnyControlChanged();
-    });
+    connect(sp_fs_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
     connect(sp_f0_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
-    connect(sp_q_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
+    connect(sp_q_,  QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
 
     connect(cb_bias_apply_, &QCheckBox::toggled, this, applyHook);
 
     split->addWidget(ctrlPanel);
-
     split->setStretchFactor(0, 2);
     split->setStretchFactor(1, 16);
     split->setStretchFactor(2, 3);
@@ -381,9 +392,40 @@ hub::PipelineConfig MainWindow::readCfgFromUi() const {
     return cfg;
 }
 
-void MainWindow::beginConnecting(const QString& addr) {
+void MainWindow::rescalePlotTime(double ratio) {
+    for (auto& buf : buffers_) {
+        for (auto& pt : buf) {
+            pt.setX(pt.x() * ratio);
+        }
+    }
+    for (auto& pf : pending_) {
+        pf.t *= ratio;
+    }
+}
+
+void MainWindow::clearPlotData() {
+    pending_.clear();
+
+    sampleIndex_ = 0;
+
+    plotFs_ = sp_fs_ ? sp_fs_->value() : 200.0;
+    if (plotFs_ < 1.0) plotFs_ = 1.0;
+    dtPlot_ = 1.0 / plotFs_;
+
+    for (auto& b : buffers_) b.clear();
+    for (auto* s : series_) s->replace(QList<QPointF>());
+
+    if (centerLine_) centerLine_->replace(QList<QPointF>());
+
+    double xwin = sp_xwin_ ? sp_xwin_->value() : 1.0;
+    if (xwin < 0.5) xwin = 0.5;
+    axX_->setRange(0.0, xwin);
+}
+
+void MainWindow::beginConnecting(const QString& addr, const QString& name) {
     connecting_ = true;
     connectingAddr_ = addr;
+    connectingName_ = name;
     if (connectTimeout_) connectTimeout_->start();
     updateDeviceListDecor();
 }
@@ -391,6 +433,7 @@ void MainWindow::beginConnecting(const QString& addr) {
 void MainWindow::endConnecting() {
     connecting_ = false;
     connectingAddr_.clear();
+    connectingName_.clear();
     if (connectTimeout_) connectTimeout_->stop();
     updateDeviceListDecor();
 }
@@ -446,61 +489,92 @@ void MainWindow::onOpenPositionTracking() {
 
 void MainWindow::onScanUpdated(QVector<DeviceInfo> devices) {
     devices_ = devices;
+
     list_->clear();
+
+    bool foundConnected = false;
+    bool foundConnecting = false;
+
     for (int i = 0; i < devices_.size(); ++i) {
-        auto& d = devices_[i];
-        QString s = QString("%1  (%2)  rssi=%3").arg(d.name).arg(d.address).arg(d.rssi);
-        auto* item = new QListWidgetItem(s);
-        item->setData(Qt::UserRole, d.address);
+        const auto& d = devices_[i];
+
+        QString text = QString("%1  (%2)  rssi=%3").arg(d.name).arg(d.address).arg(d.rssi);
+        auto* item = new QListWidgetItem(text);
+        item->setData(ROLE_ADDR, d.address);
+        item->setData(ROLE_NAME, d.name);
+        item->setData(ROLE_SCAN_INDEX, i);
         list_->addItem(item);
+
+        if (!connectedAddr_.isEmpty() && d.address == connectedAddr_) foundConnected = true;
+        if (connecting_ && d.address == connectingAddr_) foundConnecting = true;
     }
+
+    if (!connectedAddr_.isEmpty() && !foundConnected) {
+        QString nm = connectedName_.isEmpty() ? "CONNECTED" : connectedName_;
+        QString text = QString("%1  (%2)  rssi=--").arg(nm).arg(connectedAddr_);
+        auto* item = new QListWidgetItem(text);
+        item->setData(ROLE_ADDR, connectedAddr_);
+        item->setData(ROLE_NAME, nm);
+        item->setData(ROLE_SCAN_INDEX, -1);
+        list_->insertItem(0, item);
+    }
+
+    if (connecting_ && !connectingAddr_.isEmpty() && !foundConnecting) {
+        QString nm = connectingName_.isEmpty() ? "CONNECTING" : connectingName_;
+        QString text = QString("%1  (%2)  rssi=--").arg(nm).arg(connectingAddr_);
+        auto* item = new QListWidgetItem(text);
+        item->setData(ROLE_ADDR, connectingAddr_);
+        item->setData(ROLE_NAME, nm);
+        item->setData(ROLE_SCAN_INDEX, -1);
+        list_->insertItem(0, item);
+    }
+
     updateDeviceListDecor();
 }
 
 void MainWindow::updateDeviceListDecor() {
     for (int i = 0; i < list_->count(); ++i) {
         auto* it = list_->item(i);
-        QString addr = it->data(Qt::UserRole).toString();
+        QString addr = it->data(ROLE_ADDR).toString();
 
-        bool isConnected = (!connectedAddr_.isEmpty() && addr == connectedAddr_);
-        bool isConnecting = (connecting_ && addr == connectingAddr_);
+        int st = 0;
+        if (!connectedAddr_.isEmpty() && addr == connectedAddr_) st = 1;
+        if (connecting_ && addr == connectingAddr_) st = 2;
 
-        QFont f = it->font();
-        f.setBold(isConnected);
-        it->setFont(f);
+        it->setData(ROLE_STATE, st);
 
         auto flags = it->flags();
-        if (isConnecting) flags &= ~Qt::ItemIsEnabled;
+        if (st == 2) flags &= ~Qt::ItemIsEnabled;
         else flags |= Qt::ItemIsEnabled;
         it->setFlags(flags);
 
-        if (isConnecting) it->setForeground(QBrush(QColor(150, 150, 150)));
+        if (st == 2) it->setForeground(QBrush(QColor(150, 150, 150)));
         else it->setForeground(QBrush());
     }
+    list_->viewport()->update();
 }
 
 void MainWindow::onDeviceClicked(QListWidgetItem* item) {
     if (!item) return;
-
-    // 연결 시도 중에는 추가 클릭 무시
     if (connecting_) return;
 
-    int idx = list_->row(item);
-    if (idx < 0) return;
+    QString addr = item->data(ROLE_ADDR).toString();
+    QString name = item->data(ROLE_NAME).toString();
+    int scanIndex = item->data(ROLE_SCAN_INDEX).toInt();
 
-    QString addr = item->data(Qt::UserRole).toString();
-    beginConnecting(addr);
+    if (!connectedAddr_.isEmpty() && addr == connectedAddr_) return;
+    if (scanIndex < 0) return;
 
-    QMetaObject::invokeMethod(worker_, [w = worker_, idx]() { w->connectToIndex(idx); }, Qt::QueuedConnection);
+    beginConnecting(addr, name);
+    QMetaObject::invokeMethod(worker_, [w = worker_, scanIndex]() { w->connectToIndex(scanIndex); }, Qt::QueuedConnection);
 }
 
 void MainWindow::onStatus(QString text) {
     status_->setText(text);
 
-    // 연결 시도 중 실패/중단 케이스면 원복
     if (connecting_) {
         QString t = text.toLower();
-        if (t.contains("failed") || t.contains("no notify") || t.contains("no bluetooth") || t.startsWith("scanning")) {
+        if (t.contains("connect failed") || t.contains("no notify") || t.contains("no bluetooth")) {
             endConnecting();
         }
     }
@@ -508,9 +582,10 @@ void MainWindow::onStatus(QString text) {
 
 void MainWindow::onConnected(QString name, QString addr) {
     connectedAddr_ = addr;
+    connectedName_ = name;
     conn_->setText(QString("Connected: %1  %2").arg(name).arg(addr));
 
-    endConnecting(); // 연결 성공 시 회색 해제
+    endConnecting();
     updateDeviceListDecor();
 
     fsAutoSetDone_ = false;
@@ -519,13 +594,13 @@ void MainWindow::onConnected(QString name, QString addr) {
 
 void MainWindow::onDisconnected() {
     connectedAddr_.clear();
+    connectedName_.clear();
     conn_->setText("-");
 
-    endConnecting(); // 혹시 연결 중 끊긴 경우 대비
-    updateDeviceListDecor();
-
-    fsAutoSetDone_ = false;
     clearPlotData();
+
+    if (!connecting_) endConnecting();
+    updateDeviceListDecor();
 }
 
 void MainWindow::onStats(qulonglong ok, qulonglong bad) {
@@ -546,15 +621,31 @@ void MainWindow::onStreamStats(qulonglong totalSamples, double totalTimeSec, qul
         .arg(last1sSamples)
         .arg(dt_ms, 0, 'f', 3));
 
+    // ✅ plot x간격은 uniform이지만, fs를 더 정확히 만들고 싶으면 "한 번만" rescale
     if (!fsAutoSetDone_ && totalTimeSec >= 1.0 && last1sSamples > 0) {
         fsAutoSetDone_ = true;
-        sp_fs_->setValue((double)last1sSamples);
-        status_->setText(QString("Sampling rate auto-set: %1 Hz").arg(last1sSamples));
+
+        double newFs = (double)last1sSamples;
+        if (newFs < 1.0) newFs = 1.0;
+
+        double oldFs = plotFs_;
+        plotFs_ = newFs;
+        dtPlot_ = 1.0 / plotFs_;
+
+        // x축 전체를 리셋하지 않고, 기존 점들 x만 스케일 보정
+        // x = k*(1/oldFs) -> k*(1/newFs) => x *= oldFs/newFs
+        double ratio = oldFs / newFs;
+        rescalePlotTime(ratio);
+
+        sp_fs_->setValue(newFs);
+        status_->setText(QString("Sampling rate auto-set: %1 Hz").arg((int)newFs));
     }
 }
 
 void MainWindow::onFrame(qulonglong, QVector<float> x, bool, float) {
-    pending_samples_.emplace_back(std::move(x));
+    double t = (double)sampleIndex_ * dtPlot_;
+    sampleIndex_++;
+    pending_.push_back(PendingFrame{t, std::move(x)});
 }
 
 void MainWindow::rebuildPlot(int n_ch) {
@@ -581,52 +672,22 @@ void MainWindow::rebuildPlot(int n_ch) {
     }
 }
 
-void MainWindow::clearPlotData() {
-    pending_samples_.clear();
-    plotSampleIndex_ = 0;
-    plotFsUsed_ = 0.0;
-
-    for (auto& b : buffers_) b.clear();
-    for (auto* s : series_) s->replace(QList<QPointF>());
-
-    if (centerLine_) centerLine_->replace(QList<QPointF>());
-
-    double xwin = sp_xwin_ ? sp_xwin_->value() : 1.0;
-    if (xwin < 0.5) xwin = 0.5;
-    axX_->setRange(0.0, xwin);
-}
-
 void MainWindow::onPlotTick() {
-    if (pending_samples_.empty()) return;
+    if (pending_.empty()) return;
 
-    std::vector<QVector<float>> local;
-    local.swap(pending_samples_);
+    std::vector<PendingFrame> local;
+    local.swap(pending_);
 
-    double fs = sp_fs_ ? sp_fs_->value() : 200.0;
-    if (fs < 1.0) fs = 1.0;
-
-    if (plotFsUsed_ == 0.0) plotFsUsed_ = fs;
-    if (std::abs(fs - plotFsUsed_) > 1e-9) {
-        plotFsUsed_ = fs;
-        plotSampleIndex_ = 0;
-        for (auto& b : buffers_) b.clear();
-        for (auto* s : series_) s->replace(QList<QPointF>());
-    }
-
-    const double dt = 1.0 / plotFsUsed_;
-
-    int n_ch = (int)local.front().size();
+    int n_ch = (int)local.front().x.size();
     if (n_ch <= 0) return;
     if (series_.size() != n_ch) rebuildPlot(n_ch);
 
-    double t_end = 0.0;
-    for (const auto& sample : local) {
-        if ((int)sample.size() != n_ch) continue;
-        double t = (double)plotSampleIndex_ * dt;
-        plotSampleIndex_++;
-        t_end = t;
+    double t_end = local.back().t;
+
+    for (const auto& f : local) {
+        if ((int)f.x.size() != n_ch) continue;
         for (int i = 0; i < n_ch; ++i) {
-            buffers_[i].append(QPointF(t, sample[i]));
+            buffers_[i].append(QPointF(f.t, f.x[i]));
         }
     }
 

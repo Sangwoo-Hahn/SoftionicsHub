@@ -1,18 +1,46 @@
 {
   "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 21, "patch": 0 },
   "configurePresets": [
     {
-      "name": "vs2022",
+      "name": "win-msvc-x64-base",
+      "hidden": true,
       "generator": "Visual Studio 17 2022",
       "architecture": "x64",
-      "binaryDir": "${sourceDir}/build_gui"
+      "binaryDir": "${sourceDir}/build_gui",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "17"
+      }
+    },
+    {
+      "name": "win-gui-release",
+      "displayName": "Windows GUI Release",
+      "inherits": "win-msvc-x64-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "win-gui-debug",
+      "displayName": "Windows GUI Debug",
+      "inherits": "win-msvc-x64-base",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Debug"
+      }
     }
   ],
   "buildPresets": [
     {
-      "name": "vs2022-release",
-      "configurePreset": "vs2022",
-      "configuration": "Release"
+      "name": "win-gui-release",
+      "configurePreset": "win-gui-release",
+      "configuration": "Release",
+      "targets": [ "softionics_hub_gui" ]
+    },
+    {
+      "name": "win-gui-debug",
+      "configurePreset": "win-gui-debug",
+      "configuration": "Debug",
+      "targets": [ "softionics_hub_gui" ]
     }
   ]
 }

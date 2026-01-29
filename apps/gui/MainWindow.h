@@ -22,6 +22,7 @@
 #include <QtCharts/QChart>
 
 #include <vector>
+#include <cstdint>
 
 #include "BleWorker.h"
 #include "hub/Pipeline.h"
@@ -57,18 +58,24 @@ private slots:
     void onToggleRecord(bool on);
 
     void onOpenPositionTracking();
-
     void onPlotTick();
 
 private:
+    struct PendingFrame {
+        double t;        // seconds on plot axis (uniform step)
+        QVector<float> x;
+    };
+
     void buildUi();
     void rebuildPlot(int n_ch);
     void clearPlotData();
     void updateDeviceListDecor();
     hub::PipelineConfig readCfgFromUi() const;
 
-    void beginConnecting(const QString& addr);
+    void beginConnecting(const QString& addr, const QString& name);
     void endConnecting();
+
+    void rescalePlotTime(double ratio); // scale existing x coordinates
 
 private:
     QThread workerThread_;
@@ -77,7 +84,9 @@ private:
     PositionTrackingWindow* ptWin_ = nullptr;
 
     QVector<DeviceInfo> devices_;
+
     QString connectedAddr_;
+    QString connectedName_;
 
     QListWidget* list_ = nullptr;
     QLabel* status_ = nullptr;
@@ -87,7 +96,7 @@ private:
     QLabel* lb_stream_stats_ = nullptr;
 
     // Plot controls
-    QDoubleSpinBox* sp_xwin_ = nullptr;     // sec
+    QDoubleSpinBox* sp_xwin_ = nullptr;
     QDoubleSpinBox* sp_ycenter_ = nullptr;
     QDoubleSpinBox* sp_yabs_ = nullptr;
     QCheckBox* cb_yauto_ = nullptr;
@@ -128,19 +137,22 @@ private:
 
     QVector<QLineSeries*> series_;
     QVector<QList<QPointF>> buffers_;
-    std::vector<QVector<float>> pending_samples_;
+    std::vector<PendingFrame> pending_;
 
-    double plotFsUsed_ = 0.0;
-    unsigned long long plotSampleIndex_ = 0;
+    // ---- uniform-x plot clock ----
+    uint64_t sampleIndex_ = 0;      // increments by 1 per sample(line)
+    double plotFs_ = 200.0;         // fixed (can be updated once by auto-measure with rescale)
+    double dtPlot_ = 1.0 / 200.0;   // 1/plotFs_
 
     QTimer* plotTimer_ = nullptr;
     QTimer* applyTimer_ = nullptr;
 
     bool fsAutoSetDone_ = false;
 
-    // ---- Connecting UI state ----
+    // Connecting UI
     bool connecting_ = false;
     QString connectingAddr_;
+    QString connectingName_;
     QTimer* connectTimeout_ = nullptr;
 };
 
