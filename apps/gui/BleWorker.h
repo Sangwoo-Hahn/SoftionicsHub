@@ -21,7 +21,6 @@
 #include "hub/Framer.h"
 #include "hub/Parser.h"
 #include "hub/Pipeline.h"
-#include "hub/model/BF16.h"
 
 struct DeviceInfo {
     QString name;
@@ -48,10 +47,6 @@ public slots:
 
     void saveBiasCsv(QString path);
 
-    void setBF16Enabled(bool on);
-    void setBF16Params(double rc_r, double rc_c, double ema_alpha, double quiet_thresh);
-    void resetBF16();
-
 signals:
     void scanUpdated(QVector<DeviceInfo> devices);
     void statusText(QString text);
@@ -62,10 +57,7 @@ signals:
     void statsUpdated(qulonglong ok, qulonglong bad);
 
     void biasStateChanged(bool hasBias, bool capturing);
-
     void streamStats(qulonglong totalSamples, double totalTimeSec, qulonglong last1sSamples, double lastDtSec);
-
-    void poseReady(double x, double y, double z, double q1, double q2, double err, bool quiet, bool hasPose);
 
 private:
     void startScanning();
@@ -121,10 +113,6 @@ private:
     uint64_t st_total_samples_ = 0;
     uint64_t st_last_emit_ns_ = 0;
     std::deque<uint64_t> st_last1s_ts_;
-
-    std::atomic<bool> bf16Enabled_{false};
-    QMutex bfMu_;
-    hub::BF16Solver bf16_;
 };
 
 #endif

@@ -1,5 +1,5 @@
 #include "MainWindow.h"
-#include "BF16Window.h"
+#include "PositionTrackingWindow.h"
 
 #include <QHBoxLayout>
 #include <QVBoxLayout>
@@ -10,7 +10,10 @@
 #include <QPainter>
 #include <QAbstractItemView>
 #include <QtCore/QOverload>
+#include <QColor>
+#include <QBrush>
 
+#include <algorithm>
 #include <cmath>
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
@@ -30,7 +33,7 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     buildUi();
 
     plotTimer_ = new QTimer(this);
-    plotTimer_->setInterval(100);
+    plotTimer_->setInterval(50); // 20fps UI update (샘플은 누적)
     connect(plotTimer_, &QTimer::timeout, this, &MainWindow::onPlotTick);
     plotTimer_->start();
 
@@ -39,19 +42,29 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     applyTimer_->setInterval(120);
     connect(applyTimer_, &QTimer::timeout, this, &MainWindow::applyPipelineNow);
 
+    connectTimeout_ = new QTimer(this);
+    connectTimeout_->setSingleShot(true);
+    connectTimeout_->setInterval(8000); // 8초 타임아웃
+    connect(connectTimeout_, &QTimer::timeout, this, [this]() {
+        if (!connecting_) return;
+        status_->setText("Connect timeout");
+        endConnecting();
+    });
+
     QMetaObject::invokeMethod(worker_, [w = worker_]() { w->startAuto("Softionics"); }, Qt::QueuedConnection);
     applyPipelineNow();
 }
 
 MainWindow::~MainWindow() {
-    if (bfWin_) {
-        bfWin_->close();
-        bfWin_ = nullptr;
+    if (ptWin_) {
+        ptWin_->close();
+        ptWin_ = nullptr;
     }
 
     if (worker_) {
         QMetaObject::invokeMethod(worker_, "disconnectDevice", Qt::BlockingQueuedConnection);
     }
+
     workerThread_.quit();
     workerThread_.wait();
     delete worker_;
@@ -64,7 +77,9 @@ void MainWindow::buildUi() {
     auto* split = new QSplitter(Qt::Horizontal, central);
     split->setChildrenCollapsible(false);
 
-    // ---- devices ----
+    // --------------------
+    // Left: Devices
+    // --------------------
     auto* devPanel = new QWidget(split);
     devPanel->setMinimumWidth(280);
     auto* devL = new QVBoxLayout(devPanel);
@@ -95,41 +110,43 @@ void MainWindow::buildUi() {
 
     split->addWidget(devPanel);
 
-    // ---- time plot ----
+    // --------------------
+    // Middle: Chart
+    // --------------------
     auto* chartPanel = new QWidget(split);
     chartPanel->setMinimumWidth(900);
     auto* chartL = new QVBoxLayout(chartPanel);
 
-    timeChart_ = new QChart();
-    timeChart_->legend()->hide();
+    chart_ = new QChart();
+    chart_->legend()->hide();
 
-    timeAxX_ = new QValueAxis();
-    timeAxY_ = new QValueAxis();
-    timeAxX_->setRange(0.0, 1.0);
-    timeAxY_->setRange(-1.0, 1.0);
-    timeAxX_->setLabelFormat("%.3f");
-    timeAxY_->setLabelFormat("%.6g");
+    axX_ = new QValueAxis();
+    axY_ = new QValueAxis();
+    axX_->setRange(0.0, 1.0);
+    axY_->setRange(-1.0, 1.0);
+    axX_->setLabelFormat("%.3f");
+    axY_->setLabelFormat("%.6g");
 
-    timeChart_->addAxis(timeAxX_, Qt::AlignBottom);
-    timeChart_->addAxis(timeAxY_, Qt::AlignLeft);
+    chart_->addAxis(axX_, Qt::AlignBottom);
+    chart_->addAxis(axY_, Qt::AlignLeft);
 
-    timeCenterLine_ = new QLineSeries(timeChart_);
-    timeChart_->addSeries(timeCenterLine_);
-    timeCenterLine_->attachAxis(timeAxX_);
-    timeCenterLine_->attachAxis(timeAxY_);
+    centerLine_ = new QLineSeries(chart_);
+    chart_->addSeries(centerLine_);
+    centerLine_->attachAxis(axX_);
+    centerLine_->attachAxis(axY_);
     {
-        auto pen = timeCenterLine_->pen();
+        auto pen = centerLine_->pen();
         pen.setWidthF(1.0);
         pen.setStyle(Qt::DashLine);
         auto c = pen.color();
         c.setAlpha(140);
         pen.setColor(c);
-        timeCenterLine_->setPen(pen);
+        centerLine_->setPen(pen);
     }
 
-    timeView_ = new QChartView(timeChart_, chartPanel);
-    timeView_->setRenderHint(QPainter::Antialiasing, true);
-    chartL->addWidget(timeView_, 1);
+    chartView_ = new QChartView(chart_, chartPanel);
+    chartView_->setRenderHint(QPainter::Antialiasing, true);
+    chartL->addWidget(chartView_, 1);
 
     lb_stream_stats_ = new QLabel("Total: 0 | Time: 0.000 s | 1s: 0 | dt: 0.000 ms", chartPanel);
     lb_stream_stats_->setObjectName("StatusLabel");
@@ -138,17 +155,19 @@ void MainWindow::buildUi() {
 
     split->addWidget(chartPanel);
 
-    // ---- controls ----
+    // --------------------
+    // Right: Controls
+    // --------------------
     auto* ctrlPanel = new QWidget(split);
     ctrlPanel->setMinimumWidth(420);
     auto* ctrlL = new QVBoxLayout(ctrlPanel);
 
-    auto* gBf = new QGroupBox("BF16", ctrlPanel);
-    auto* bfL = new QVBoxLayout(gBf);
-    btn_bf16_ = new QPushButton("Open BF16 Window", gBf);
-    connect(btn_bf16_, &QPushButton::clicked, this, &MainWindow::onOpenBF16);
-    bfL->addWidget(btn_bf16_);
-    ctrlL->addWidget(gBf);
+    auto* gPT = new QGroupBox("PositionTracking", ctrlPanel);
+    auto* ptL = new QVBoxLayout(gPT);
+    btn_pt_ = new QPushButton("Open PositionTracking Window", gPT);
+    connect(btn_pt_, &QPushButton::clicked, this, &MainWindow::onOpenPositionTracking);
+    ptL->addWidget(btn_pt_);
+    ctrlL->addWidget(gPT);
 
     auto* gPlot = new QGroupBox("Plot", ctrlPanel);
     auto* pL = new QVBoxLayout(gPlot);
@@ -224,40 +243,34 @@ void MainWindow::buildUi() {
     rowEMAL->addStretch(1);
     fL->addWidget(rowEMA);
 
-    auto* rowNotchCheck = new QWidget(gFilters);
-    auto* rowNotchCheckL = new QHBoxLayout(rowNotchCheck);
-    cb_notch_ = new QCheckBox("Notch", rowNotchCheck);
+    auto* rowNotch = new QWidget(gFilters);
+    auto* rowNotchL = new QHBoxLayout(rowNotch);
+    cb_notch_ = new QCheckBox("Notch", rowNotch);
     cb_notch_->setChecked(false);
-    rowNotchCheckL->addWidget(cb_notch_);
-    rowNotchCheckL->addStretch(1);
-    fL->addWidget(rowNotchCheck);
 
-    auto* rowNotchParams = new QWidget(gFilters);
-    auto* rowNotchParamsL = new QHBoxLayout(rowNotchParams);
-
-    rowNotchParamsL->addWidget(new QLabel("Sampling rate (Hz)", rowNotchParams));
-    sp_fs_ = new QDoubleSpinBox(rowNotchParams);
+    rowNotchL->addWidget(cb_notch_);
+    rowNotchL->addWidget(new QLabel("fs", rowNotch));
+    sp_fs_ = new QDoubleSpinBox(rowNotch);
     sp_fs_->setRange(10, 50000);
     sp_fs_->setDecimals(2);
     sp_fs_->setValue(200.0);
-    rowNotchParamsL->addWidget(sp_fs_);
+    rowNotchL->addWidget(sp_fs_);
 
-    rowNotchParamsL->addWidget(new QLabel("Notch f0 (Hz)", rowNotchParams));
-    sp_f0_ = new QDoubleSpinBox(rowNotchParams);
+    rowNotchL->addWidget(new QLabel("f0", rowNotch));
+    sp_f0_ = new QDoubleSpinBox(rowNotch);
     sp_f0_->setRange(1, 5000);
     sp_f0_->setDecimals(2);
     sp_f0_->setValue(60.0);
-    rowNotchParamsL->addWidget(sp_f0_);
+    rowNotchL->addWidget(sp_f0_);
 
-    rowNotchParamsL->addWidget(new QLabel("Q", rowNotchParams));
-    sp_q_ = new QDoubleSpinBox(rowNotchParams);
+    rowNotchL->addWidget(new QLabel("Q", rowNotch));
+    sp_q_ = new QDoubleSpinBox(rowNotch);
     sp_q_->setRange(0.1, 2000);
     sp_q_->setDecimals(2);
     sp_q_->setValue(30.0);
-    rowNotchParamsL->addWidget(sp_q_);
-
-    rowNotchParamsL->addStretch(1);
-    fL->addWidget(rowNotchParams);
+    rowNotchL->addWidget(sp_q_);
+    rowNotchL->addStretch(1);
+    fL->addWidget(rowNotch);
 
     ctrlL->addWidget(gFilters);
 
@@ -268,11 +281,14 @@ void MainWindow::buildUi() {
     auto* rowBiasL = new QHBoxLayout(rowBias);
     cb_bias_apply_ = new QCheckBox("Apply stored bias", rowBias);
     cb_bias_apply_->setChecked(false);
+
     sp_bias_frames_ = new QSpinBox(rowBias);
     sp_bias_frames_->setRange(1, 2000000);
     sp_bias_frames_->setValue(200);
+
     btn_bias_cap_ = new QPushButton("Capture", rowBias);
     connect(btn_bias_cap_, &QPushButton::clicked, this, &MainWindow::onBiasCapture);
+
     btn_bias_save_ = new QPushButton("Save CSV", rowBias);
     connect(btn_bias_save_, &QPushButton::clicked, this, &MainWindow::onBiasSave);
 
@@ -284,6 +300,7 @@ void MainWindow::buildUi() {
     bL->addWidget(rowBias);
 
     lb_bias_state_ = new QLabel("State: None", gBias);
+    lb_bias_state_->setObjectName("StatusLabel");
     bL->addWidget(lb_bias_state_);
 
     ctrlL->addWidget(gBias);
@@ -294,11 +311,14 @@ void MainWindow::buildUi() {
     auto* rowRec = new QWidget(gRec);
     auto* rowRecL = new QHBoxLayout(rowRec);
     cb_record_ = new QCheckBox("Record", rowRec);
+
     ed_csv_path_ = new QLineEdit(rowRec);
     ed_csv_path_->setReadOnly(true);
+
     btn_browse_csv_ = new QPushButton("Browse", rowRec);
     connect(btn_browse_csv_, &QPushButton::clicked, this, &MainWindow::onBrowseCsv);
     connect(cb_record_, &QCheckBox::toggled, this, &MainWindow::onToggleRecord);
+
     rowRecL->addWidget(cb_record_);
     rowRecL->addWidget(ed_csv_path_, 1);
     rowRecL->addWidget(btn_browse_csv_);
@@ -309,19 +329,21 @@ void MainWindow::buildUi() {
 
     auto applyHook = [this]() { onAnyControlChanged(); };
 
-    connect(sp_xwin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) { clearTimePlotData(); });
+    connect(sp_xwin_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) { clearPlotData(); });
+
     connect(sp_ycenter_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
     connect(sp_yabs_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
     connect(cb_yauto_, &QCheckBox::toggled, this, applyHook);
 
     connect(cb_ma_, &QCheckBox::toggled, this, applyHook);
     connect(sp_ma_, QOverload<int>::of(&QSpinBox::valueChanged), this, applyHook);
+
     connect(cb_ema_, &QCheckBox::toggled, this, applyHook);
     connect(sp_alpha_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
 
     connect(cb_notch_, &QCheckBox::toggled, this, applyHook);
     connect(sp_fs_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) {
-        clearTimePlotData();
+        clearPlotData();
         onAnyControlChanged();
     });
     connect(sp_f0_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
@@ -346,31 +368,31 @@ hub::PipelineConfig MainWindow::readCfgFromUi() const {
     hub::PipelineConfig cfg;
     cfg.enable_ma = cb_ma_->isChecked();
     cfg.ma_win = (size_t)sp_ma_->value();
+
     cfg.enable_ema = cb_ema_->isChecked();
     cfg.ema_alpha = (float)sp_alpha_->value();
+
     cfg.enable_notch = cb_notch_->isChecked();
     cfg.fs_hz = sp_fs_->value();
     cfg.notch_f0 = sp_f0_->value();
-    cfg.notch_q = sp_q_->value();
+    cfg.notch_q  = sp_q_->value();
+
     cfg.enable_bias = cb_bias_apply_->isChecked();
-    cfg.enable_model = false;
-    cfg.model_bias = 0.0f;
     return cfg;
 }
 
-void MainWindow::clearTimePlotData() {
-    pending_samples_.clear();
-    plotSampleIndex_ = 0;
-    plotFsUsed_ = 0.0;
+void MainWindow::beginConnecting(const QString& addr) {
+    connecting_ = true;
+    connectingAddr_ = addr;
+    if (connectTimeout_) connectTimeout_->start();
+    updateDeviceListDecor();
+}
 
-    for (auto& b : timeBuffers_) b.clear();
-    for (auto* s : timeSeries_) s->replace(QList<QPointF>());
-
-    if (timeCenterLine_) timeCenterLine_->replace(QList<QPointF>());
-
-    double xwin = sp_xwin_ ? sp_xwin_->value() : 1.0;
-    if (xwin < 0.5) xwin = 0.5;
-    timeAxX_->setRange(0.0, xwin);
+void MainWindow::endConnecting() {
+    connecting_ = false;
+    connectingAddr_.clear();
+    if (connectTimeout_) connectTimeout_->stop();
+    updateDeviceListDecor();
 }
 
 void MainWindow::onAnyControlChanged() {
@@ -415,21 +437,11 @@ void MainWindow::onToggleRecord(bool on) {
     }
 }
 
-void MainWindow::onOpenBF16() {
-    if (!bfWin_) {
-        bfWin_ = new BF16Window(worker_, this);
-        bfWin_->setAttribute(Qt::WA_DeleteOnClose, false);
-    }
-    bfWin_->show();
-    bfWin_->raise();
-    bfWin_->activateWindow();
-}
-
-void MainWindow::onDeviceClicked(QListWidgetItem* item) {
-    if (!item) return;
-    int idx = list_->row(item);
-    if (idx < 0) return;
-    QMetaObject::invokeMethod(worker_, [w = worker_, idx]() { w->connectToIndex(idx); }, Qt::QueuedConnection);
+void MainWindow::onOpenPositionTracking() {
+    if (!ptWin_) ptWin_ = new PositionTrackingWindow(worker_, this);
+    ptWin_->show();
+    ptWin_->raise();
+    ptWin_->activateWindow();
 }
 
 void MainWindow::onScanUpdated(QVector<DeviceInfo> devices) {
@@ -438,9 +450,9 @@ void MainWindow::onScanUpdated(QVector<DeviceInfo> devices) {
     for (int i = 0; i < devices_.size(); ++i) {
         auto& d = devices_[i];
         QString s = QString("%1  (%2)  rssi=%3").arg(d.name).arg(d.address).arg(d.rssi);
-        auto* it = new QListWidgetItem(s);
-        it->setData(Qt::UserRole, d.address);
-        list_->addItem(it);
+        auto* item = new QListWidgetItem(s);
+        item->setData(Qt::UserRole, d.address);
+        list_->addItem(item);
     }
     updateDeviceListDecor();
 }
@@ -449,30 +461,71 @@ void MainWindow::updateDeviceListDecor() {
     for (int i = 0; i < list_->count(); ++i) {
         auto* it = list_->item(i);
         QString addr = it->data(Qt::UserRole).toString();
+
+        bool isConnected = (!connectedAddr_.isEmpty() && addr == connectedAddr_);
+        bool isConnecting = (connecting_ && addr == connectingAddr_);
+
         QFont f = it->font();
-        f.setBold(!connectedAddr_.isEmpty() && addr == connectedAddr_);
+        f.setBold(isConnected);
         it->setFont(f);
+
+        auto flags = it->flags();
+        if (isConnecting) flags &= ~Qt::ItemIsEnabled;
+        else flags |= Qt::ItemIsEnabled;
+        it->setFlags(flags);
+
+        if (isConnecting) it->setForeground(QBrush(QColor(150, 150, 150)));
+        else it->setForeground(QBrush());
     }
 }
 
-void MainWindow::onStatus(QString text) { status_->setText(text); }
+void MainWindow::onDeviceClicked(QListWidgetItem* item) {
+    if (!item) return;
+
+    // 연결 시도 중에는 추가 클릭 무시
+    if (connecting_) return;
+
+    int idx = list_->row(item);
+    if (idx < 0) return;
+
+    QString addr = item->data(Qt::UserRole).toString();
+    beginConnecting(addr);
+
+    QMetaObject::invokeMethod(worker_, [w = worker_, idx]() { w->connectToIndex(idx); }, Qt::QueuedConnection);
+}
+
+void MainWindow::onStatus(QString text) {
+    status_->setText(text);
+
+    // 연결 시도 중 실패/중단 케이스면 원복
+    if (connecting_) {
+        QString t = text.toLower();
+        if (t.contains("failed") || t.contains("no notify") || t.contains("no bluetooth") || t.startsWith("scanning")) {
+            endConnecting();
+        }
+    }
+}
 
 void MainWindow::onConnected(QString name, QString addr) {
     connectedAddr_ = addr;
     conn_->setText(QString("Connected: %1  %2").arg(name).arg(addr));
+
+    endConnecting(); // 연결 성공 시 회색 해제
     updateDeviceListDecor();
 
     fsAutoSetDone_ = false;
-    clearTimePlotData();
+    clearPlotData();
 }
 
 void MainWindow::onDisconnected() {
     connectedAddr_.clear();
     conn_->setText("-");
+
+    endConnecting(); // 혹시 연결 중 끊긴 경우 대비
     updateDeviceListDecor();
 
     fsAutoSetDone_ = false;
-    clearTimePlotData();
+    clearPlotData();
 }
 
 void MainWindow::onStats(qulonglong ok, qulonglong bad) {
@@ -480,55 +533,67 @@ void MainWindow::onStats(qulonglong ok, qulonglong bad) {
 }
 
 void MainWindow::onBiasState(bool hasBias, bool capturing) {
-    if (!lb_bias_state_) return;
     if (capturing) lb_bias_state_->setText("State: Capturing");
     else if (hasBias) lb_bias_state_->setText("State: Stored");
     else lb_bias_state_->setText("State: None");
 }
 
 void MainWindow::onStreamStats(qulonglong totalSamples, double totalTimeSec, qulonglong last1sSamples, double lastDtSec) {
-    if (lb_stream_stats_) {
-        double dt_ms = lastDtSec * 1000.0;
-        lb_stream_stats_->setText(QString("Total: %1 | Time: %2 s | 1s: %3 | dt: %4 ms")
-            .arg(totalSamples)
-            .arg(totalTimeSec, 0, 'f', 3)
-            .arg(last1sSamples)
-            .arg(dt_ms, 0, 'f', 3));
-    }
+    double dt_ms = lastDtSec * 1000.0;
+    lb_stream_stats_->setText(QString("Total: %1 | Time: %2 s | 1s: %3 | dt: %4 ms")
+        .arg(totalSamples)
+        .arg(totalTimeSec, 0, 'f', 3)
+        .arg(last1sSamples)
+        .arg(dt_ms, 0, 'f', 3));
 
     if (!fsAutoSetDone_ && totalTimeSec >= 1.0 && last1sSamples > 0) {
         fsAutoSetDone_ = true;
-        if (sp_fs_) sp_fs_->setValue((double)last1sSamples);
+        sp_fs_->setValue((double)last1sSamples);
         status_->setText(QString("Sampling rate auto-set: %1 Hz").arg(last1sSamples));
     }
 }
 
-void MainWindow::rebuildTimePlot(int n_ch) {
-    for (auto* s : timeSeries_) {
-        timeChart_->removeSeries(s);
+void MainWindow::onFrame(qulonglong, QVector<float> x, bool, float) {
+    pending_samples_.emplace_back(std::move(x));
+}
+
+void MainWindow::rebuildPlot(int n_ch) {
+    for (auto* s : series_) {
+        chart_->removeSeries(s);
         delete s;
     }
-    timeSeries_.clear();
-    timeBuffers_.clear();
+    series_.clear();
+    buffers_.clear();
 
     for (int i = 0; i < n_ch; ++i) {
-        auto* s = new QLineSeries(timeChart_);
-        timeChart_->addSeries(s);
-        s->attachAxis(timeAxX_);
-        s->attachAxis(timeAxY_);
+        auto* s = new QLineSeries(chart_);
+        chart_->addSeries(s);
+        s->attachAxis(axX_);
+        s->attachAxis(axY_);
         auto pen = s->pen();
         pen.setWidthF(1.0);
         auto c = pen.color();
         c.setAlpha(120);
         pen.setColor(c);
         s->setPen(pen);
-        timeSeries_.push_back(s);
-        timeBuffers_.push_back(QList<QPointF>());
+        series_.push_back(s);
+        buffers_.push_back(QList<QPointF>());
     }
 }
 
-void MainWindow::onFrame(qulonglong, QVector<float> x, bool, float) {
-    pending_samples_.emplace_back(std::move(x));
+void MainWindow::clearPlotData() {
+    pending_samples_.clear();
+    plotSampleIndex_ = 0;
+    plotFsUsed_ = 0.0;
+
+    for (auto& b : buffers_) b.clear();
+    for (auto* s : series_) s->replace(QList<QPointF>());
+
+    if (centerLine_) centerLine_->replace(QList<QPointF>());
+
+    double xwin = sp_xwin_ ? sp_xwin_->value() : 1.0;
+    if (xwin < 0.5) xwin = 0.5;
+    axX_->setRange(0.0, xwin);
 }
 
 void MainWindow::onPlotTick() {
@@ -544,25 +609,24 @@ void MainWindow::onPlotTick() {
     if (std::abs(fs - plotFsUsed_) > 1e-9) {
         plotFsUsed_ = fs;
         plotSampleIndex_ = 0;
-        for (auto& b : timeBuffers_) b.clear();
-        for (auto* s : timeSeries_) s->replace(QList<QPointF>());
+        for (auto& b : buffers_) b.clear();
+        for (auto* s : series_) s->replace(QList<QPointF>());
     }
 
     const double dt = 1.0 / plotFsUsed_;
 
     int n_ch = (int)local.front().size();
-    if (n_ch > 0 && timeSeries_.size() != n_ch) rebuildTimePlot(n_ch);
+    if (n_ch <= 0) return;
+    if (series_.size() != n_ch) rebuildPlot(n_ch);
 
     double t_end = 0.0;
     for (const auto& sample : local) {
         if ((int)sample.size() != n_ch) continue;
-
         double t = (double)plotSampleIndex_ * dt;
         plotSampleIndex_++;
         t_end = t;
-
         for (int i = 0; i < n_ch; ++i) {
-            timeBuffers_[i].append(QPointF(t, sample[i]));
+            buffers_[i].append(QPointF(t, sample[i]));
         }
     }
 
@@ -572,11 +636,10 @@ void MainWindow::onPlotTick() {
     double xMin = t_end - xwin;
     if (xMin < 0.0) xMin = 0.0;
     double xMax = xMin + xwin;
-
-    timeAxX_->setRange(xMin, xMax);
+    axX_->setRange(xMin, xMax);
 
     for (int i = 0; i < n_ch; ++i) {
-        while (!timeBuffers_[i].isEmpty() && timeBuffers_[i].first().x() < xMin) timeBuffers_[i].removeFirst();
+        while (!buffers_[i].isEmpty() && buffers_[i].first().x() < xMin) buffers_[i].removeFirst();
     }
 
     double yCenter = sp_ycenter_ ? sp_ycenter_->value() : 0.0;
@@ -586,7 +649,7 @@ void MainWindow::onPlotTick() {
     if (yAuto) {
         double maxAbs = 0.0;
         for (int i = 0; i < n_ch; ++i) {
-            for (const auto& pt : timeBuffers_[i]) {
+            for (const auto& pt : buffers_[i]) {
                 double a = std::abs(pt.y() - yCenter);
                 if (a > maxAbs) maxAbs = a;
             }
@@ -598,16 +661,16 @@ void MainWindow::onPlotTick() {
         if (v < 1e-12) v = 1.0;
         yAbs = v;
     }
-    timeAxY_->setRange(yCenter - yAbs, yCenter + yAbs);
+    axY_->setRange(yCenter - yAbs, yCenter + yAbs);
 
-    if (timeCenterLine_) {
+    if (centerLine_) {
         QList<QPointF> pts;
         pts.append(QPointF(xMin, yCenter));
         pts.append(QPointF(xMax, yCenter));
-        timeCenterLine_->replace(pts);
+        centerLine_->replace(pts);
     }
 
     for (int i = 0; i < n_ch; ++i) {
-        timeSeries_[i]->replace(timeBuffers_[i]);
+        series_[i]->replace(buffers_[i]);
     }
 }
