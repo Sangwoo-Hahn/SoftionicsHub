@@ -44,7 +44,8 @@ private slots:
     void onResetAlgo();
     void onClearPath();
 
-    void onEngineOut(double x, double y, double z, double q1, double q2, double err, bool quiet, bool valid);
+    void onEngineOut(double x, double y, double z, double confidence, double q1, double q2, double err, bool quiet, bool valid);
+    void onEngineStatus(QString text);
     void onTick();
 
 private:
@@ -57,7 +58,7 @@ private:
     struct OutPkt {
         bool valid;
         bool quiet;
-        double x, y, z, q1, q2, err;
+        double x, y, z, confidence, q1, q2, err;
     };
 
     BleWorker* worker_ = nullptr;
@@ -66,6 +67,7 @@ private:
     PositionTrackingEngine* engine_ = nullptr;
 
     QTimer* timer_ = nullptr;
+    QTimer* paramTimer_ = nullptr;
 
     QComboBox* cbAlgo_ = nullptr;
     QLabel* lbAlgoInfo_ = nullptr;
@@ -92,7 +94,8 @@ private:
 
     QVector<OutPkt> pending_;
     QVector<QPointF> pathBuf_;
-    OutPkt last_{false,false,0,0,0,0,0,0};
+    OutPkt last_{false, false, 0, 0, 0, 0, 0, 0, 0};
+    QString engineStatusText_;
 
     bool connected_ = false;
 };

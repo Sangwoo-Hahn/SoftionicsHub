@@ -1,0 +1,9 @@
+CFG=Release
+PRESET=win-local-qt
+
+--------------------------------------------------
+Running: git submodule update --init --recursive
+--------------------------------------------------
+Running: cmake --preset "win-local-qt" --fresh
+CMake Error: Could not read presets from C:/Users/sangw/OneDrive/_softionics/_Programming/2026/SoftionicsHub:
+Invalid preset: "vs2022-local"

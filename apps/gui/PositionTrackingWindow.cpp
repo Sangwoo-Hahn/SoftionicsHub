@@ -11,6 +11,7 @@
 #include <QPainter>
 #include <QRectF>
 #include <QSizePolicy>
+#include <QtCore/QOverload>
 #include <algorithm>
 #include <cmath>
 
@@ -22,8 +23,14 @@ PositionTrackingWindow::PositionTrackingWindow(BleWorker* worker, QWidget* paren
     engineThread_.start();
 
     connect(engine_, &PositionTrackingEngine::outputReady, this, &PositionTrackingWindow::onEngineOut, Qt::QueuedConnection);
+    connect(engine_, &PositionTrackingEngine::statusReady, this, &PositionTrackingWindow::onEngineStatus, Qt::QueuedConnection);
 
     buildUi();
+
+    paramTimer_ = new QTimer(this);
+    paramTimer_->setSingleShot(true);
+    paramTimer_->setInterval(80);
+    connect(paramTimer_, &QTimer::timeout, this, &PositionTrackingWindow::onApplyParams);
 
     timer_ = new QTimer(this);
     timer_->setInterval(16);
@@ -83,7 +90,6 @@ void PositionTrackingWindow::buildUi() {
     auto* split = new QSplitter(Qt::Horizontal, central);
     split->setChildrenCollapsible(false);
 
-    // ---- plot ----
     auto* plotW = new QWidget(split);
     auto* plotL = new QVBoxLayout(plotW);
 
@@ -127,7 +133,6 @@ void PositionTrackingWindow::buildUi() {
 
     split->addWidget(plotW);
 
-    // ---- controls ----
     auto* ctrlW = new QWidget(split);
     ctrlW->setMinimumWidth(520);
     auto* ctrlL = new QVBoxLayout(ctrlW);
@@ -219,7 +224,8 @@ void PositionTrackingWindow::onAlgoChanged(int idx) {
 
     pending_.clear();
     pathBuf_.clear();
-    last_ = {false,false,0,0,0,0,0,0};
+    last_ = {false, false, 0, 0, 0, 0, 0, 0, 0};
+    engineStatusText_.clear();
 
     sensors_->clear();
     if (curInfo_.N == 16) {
@@ -238,36 +244,30 @@ void PositionTrackingWindow::rebuildParamUi(const hub::pt::AlgoInfo& info) {
         const auto& p = info.params[i];
 
         auto* sp = new FormatDoubleSpinBox(paramBox_);
+        sp->blockSignals(true);
         sp->setRange(p.minv, p.maxv);
-        sp->setValue(p.defv);
+        double v0 = p.defv;
+        if (i < info.defaults.size()) v0 = info.defaults[i];
+        sp->setValue(v0);
         sp->setMinimumWidth(260);
         sp->setMinimumHeight(28);
 
-        // ✅ R/C: scientific + 내부 decimals 18 (0으로 안 죽음) + stepBy()가 ×10/÷10
-        if (p.key == "rc_r" || p.key == "rc_c") {
+        if (p.scientific) {
             sp->setMode(FormatDoubleSpinBox::Mode::Scientific);
-            sp->setSciDigits(6, 18);
-        }
-        // ✅ 나머지: fixed(decimal). 특히 step은 0.001이므로 최소 6자리 확보
-        else {
+            int internalDecimals = (p.decimals >= 0) ? p.decimals : 18;
+            sp->setSciDigits(6, internalDecimals);
+        } else {
             sp->setMode(FormatDoubleSpinBox::Mode::Fixed);
-
-            if (p.key == "ema_a") {
-                sp->setFixedDecimals(4);
-                sp->setSingleStep(0.01);
-            } else if (p.key == "quiet") {
-                sp->setFixedDecimals(6);
-                sp->setSingleStep(0.05);
-            } else if (p.key == "step") {
-                sp->setFixedDecimals(6);       // 0.001000 표시/저장 가능
-                sp->setSingleStep(0.0001);
-            } else if (p.key == "xmin" || p.key == "xmax" || p.key == "ymin" || p.key == "ymax" || p.key == "zmin" || p.key == "zmax") {
-                sp->setFixedDecimals(5);
-                sp->setSingleStep(0.001);
-            } else {
-                sp->setFixedDecimals(8);
-            }
+            int d = (p.decimals >= 0) ? p.decimals : 6;
+            sp->setFixedDecimals(d);
+            if (p.step > 0.0) sp->setSingleStep(p.step);
         }
+
+        sp->blockSignals(false);
+
+        connect(sp, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) {
+            if (paramTimer_) paramTimer_->start();
+        });
 
         paramForm_->addRow(QString::fromStdString(p.label), sp);
         paramSpins_.push_back(sp);
@@ -289,7 +289,8 @@ void PositionTrackingWindow::onResetAlgo() {
     QMetaObject::invokeMethod(engine_, "reset", Qt::QueuedConnection);
     pending_.clear();
     pathBuf_.clear();
-    last_ = {false,false,0,0,0,0,0,0};
+    last_ = {false, false, 0, 0, 0, 0, 0, 0, 0};
+    engineStatusText_.clear();
     updateAxesAndDraw();
 }
 
@@ -298,8 +299,13 @@ void PositionTrackingWindow::onClearPath() {
     updateAxesAndDraw();
 }
 
-void PositionTrackingWindow::onEngineOut(double x, double y, double z, double q1, double q2, double err, bool quiet, bool valid) {
-    pending_.push_back(OutPkt{valid, quiet, x, y, z, q1, q2, err});
+void PositionTrackingWindow::onEngineOut(double x, double y, double z, double confidence, double q1, double q2, double err, bool quiet, bool valid) {
+    engineStatusText_.clear();
+    pending_.push_back(OutPkt{valid, quiet, x, y, z, confidence, q1, q2, err});
+}
+
+void PositionTrackingWindow::onEngineStatus(QString text) {
+    engineStatusText_ = text;
 }
 
 void PositionTrackingWindow::onTick() {
@@ -308,8 +314,8 @@ void PositionTrackingWindow::onTick() {
         pending_.clear();
 
         for (const auto& p : local) {
-            if (!p.valid) continue;
             last_ = p;
+            if (!p.valid) continue;
 
             if (p.quiet) {
                 if (!pathBuf_.isEmpty()) pathBuf_.removeFirst();
@@ -326,19 +332,24 @@ void PositionTrackingWindow::updateAxesAndDraw() {
     if (last_.valid) {
         QVector<QPointF> cur;
         cur.push_back(QPointF(last_.x, last_.y));
+        cur_->setMarkerSize(6.0 + 12.0 * std::clamp(last_.confidence, 0.0, 1.0));
         cur_->replace(cur);
     } else {
+        cur_->setMarkerSize(12.0);
         cur_->clear();
     }
     path_->replace(pathBuf_);
 
     if (last_.valid) {
-        lbStats_->setText(QString("x=%1  y=%2  z=%3  err=%4  %5")
+        lbStats_->setText(QString("x=%1  y=%2  z=%3  conf=%4  err=%5  %6")
             .arg(last_.x, 0, 'g', 6)
             .arg(last_.y, 0, 'g', 6)
             .arg(last_.z, 0, 'g', 6)
+            .arg(last_.confidence, 0, 'g', 6)
             .arg(last_.err, 0, 'g', 6)
             .arg(last_.quiet ? "QUIET" : "ACTIVE"));
+    } else if (!engineStatusText_.isEmpty()) {
+        lbStats_->setText(engineStatusText_);
     } else {
         lbStats_->setText("waiting...");
     }
@@ -351,19 +362,25 @@ void PositionTrackingWindow::updateAxesAndDraw() {
         minx = maxx = sens[0].x;
         miny = maxy = sens[0].y;
         for (int i = 1; i < 16; ++i) {
-            minx = std::min(minx, sens[i].x); maxx = std::max(maxx, sens[i].x);
-            miny = std::min(miny, sens[i].y); maxy = std::max(maxy, sens[i].y);
+            minx = std::min(minx, sens[i].x);
+            maxx = std::max(maxx, sens[i].x);
+            miny = std::min(miny, sens[i].y);
+            maxy = std::max(maxy, sens[i].y);
         }
     }
 
     for (const auto& p : pathBuf_) {
-        minx = std::min(minx, p.x()); maxx = std::max(maxx, p.x());
-        miny = std::min(miny, p.y()); maxy = std::max(maxy, p.y());
+        minx = std::min(minx, p.x());
+        maxx = std::max(maxx, p.x());
+        miny = std::min(miny, p.y());
+        maxy = std::max(maxy, p.y());
     }
 
     if (last_.valid) {
-        minx = std::min(minx, last_.x); maxx = std::max(maxx, last_.x);
-        miny = std::min(miny, last_.y); maxy = std::max(maxy, last_.y);
+        minx = std::min(minx, last_.x);
+        maxx = std::max(maxx, last_.x);
+        miny = std::min(miny, last_.y);
+        maxy = std::max(maxy, last_.y);
     }
 
     double cx = 0.5 * (minx + maxx);

@@ -21,12 +21,15 @@ public slots:
     void onSample(qulonglong t_ns, QVector<float> x, bool modelValid, float modelOut);
 
 signals:
-    void outputReady(double x, double y, double z, double q1, double q2, double err, bool quiet, bool valid);
+    void outputReady(double x, double y, double z, double confidence, double q1, double q2, double err, bool quiet, bool valid);
+    void statusReady(QString text);
 
 private:
     std::unique_ptr<hub::pt::IAlgorithm> algo_;
     std::string algoId_;
     std::vector<double> params_;
+    std::vector<float> sampleBuf_;
+    qulonglong lastStatusEmitNs_ = 0;
 };
 
 #endif

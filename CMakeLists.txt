@@ -21,13 +21,16 @@ add_library(hub_core
   core/src/filters/MA.cpp
   core/src/filters/Notch60.cpp
   core/src/filters/Bias.cpp
-  core/src/model/BruteForce_16x2.cpp
-  core/src/model/PositionTrackingRegistry.cpp
 )
 
 target_include_directories(hub_core PUBLIC core/include)
 target_link_libraries(hub_core PUBLIC simpleble::simpleble)
 set_target_properties(hub_core PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+
+file(GLOB HUB_MODEL_SOURCES CONFIGURE_DEPENDS core/src/model/*.cpp)
+add_library(hub_models OBJECT ${HUB_MODEL_SOURCES})
+target_include_directories(hub_models PUBLIC core/include)
+set_target_properties(hub_models PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
 
 if (WIN32)
   add_executable(softionics_hub_gui WIN32
@@ -54,6 +57,8 @@ else()
     apps/gui/PositionTrackingWindow.cpp
   )
 endif()
+
+target_sources(softionics_hub_gui PRIVATE $<TARGET_OBJECTS:hub_models>)
 
 set_source_files_properties(apps/gui/BleWorker.cpp PROPERTIES SKIP_AUTOMOC ON)
 

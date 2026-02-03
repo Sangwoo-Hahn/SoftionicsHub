@@ -1,0 +1,2041 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index bc1849f..a367392 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1,60 +1,65 @@
+-cmake_minimum_required(VERSION 3.21)
+-project(SoftionicsHub LANGUAGES C CXX)
+-
+-set(CMAKE_CXX_STANDARD 17)
+-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+-
+-set(INSTALL_SimpleBLE OFF)
+-add_subdirectory(third_party/simpleble/simpleble ${CMAKE_BINARY_DIR}/simpleble)
+-
+-set(CMAKE_AUTOMOC ON)
+-set(CMAKE_AUTORCC ON)
+-set(CMAKE_AUTOUIC ON)
+-
+-find_package(Qt6 REQUIRED COMPONENTS Widgets Charts)
+-
+-add_library(hub_core
+-  core/src/Framer.cpp
+-  core/src/Parser.cpp
+-  core/src/Pipeline.cpp
+-  core/src/filters/EMA.cpp
+-  core/src/filters/MA.cpp
+-  core/src/filters/Notch60.cpp
+-  core/src/filters/Bias.cpp
+-  core/src/model/BruteForce_16x2.cpp
+-  core/src/model/PositionTrackingRegistry.cpp
+-)
+-
+-target_include_directories(hub_core PUBLIC core/include)
+-target_link_libraries(hub_core PUBLIC simpleble::simpleble)
+-set_target_properties(hub_core PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
+-
+-if (WIN32)
+-  add_executable(softionics_hub_gui WIN32
+-    apps/gui/main.cpp
+-    apps/gui/MainWindow.h
+-    apps/gui/MainWindow.cpp
+-    apps/gui/BleWorker.h
+-    apps/gui/BleWorker.cpp
+-    apps/gui/PositionTrackingEngine.h
+-    apps/gui/PositionTrackingEngine.cpp
+-    apps/gui/PositionTrackingWindow.h
+-    apps/gui/PositionTrackingWindow.cpp
+-  )
+-else()
+-  add_executable(softionics_hub_gui
+-    apps/gui/main.cpp
+-    apps/gui/MainWindow.h
+-    apps/gui/MainWindow.cpp
+-    apps/gui/BleWorker.h
+-    apps/gui/BleWorker.cpp
+-    apps/gui/PositionTrackingEngine.h
+-    apps/gui/PositionTrackingEngine.cpp
+-    apps/gui/PositionTrackingWindow.h
+-    apps/gui/PositionTrackingWindow.cpp
+-  )
+-endif()
+-
+-set_source_files_properties(apps/gui/BleWorker.cpp PROPERTIES SKIP_AUTOMOC ON)
+-
+-target_link_libraries(softionics_hub_gui PRIVATE Qt6::Widgets Qt6::Charts hub_core)
++cmake_minimum_required(VERSION 3.21)
++project(SoftionicsHub LANGUAGES C CXX)
++
++set(CMAKE_CXX_STANDARD 17)
++set(CMAKE_CXX_STANDARD_REQUIRED ON)
++
++set(INSTALL_SimpleBLE OFF)
++add_subdirectory(third_party/simpleble/simpleble ${CMAKE_BINARY_DIR}/simpleble)
++
++set(CMAKE_AUTOMOC ON)
++set(CMAKE_AUTORCC ON)
++set(CMAKE_AUTOUIC ON)
++
++find_package(Qt6 REQUIRED COMPONENTS Widgets Charts)
++
++add_library(hub_core
++  core/src/Framer.cpp
++  core/src/Parser.cpp
++  core/src/Pipeline.cpp
++  core/src/filters/EMA.cpp
++  core/src/filters/MA.cpp
++  core/src/filters/Notch60.cpp
++  core/src/filters/Bias.cpp
++)
++
++target_include_directories(hub_core PUBLIC core/include)
++target_link_libraries(hub_core PUBLIC simpleble::simpleble)
++set_target_properties(hub_core PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
++
++file(GLOB HUB_MODEL_SOURCES CONFIGURE_DEPENDS core/src/model/*.cpp)
++add_library(hub_models OBJECT ${HUB_MODEL_SOURCES})
++target_include_directories(hub_models PUBLIC core/include)
++set_target_properties(hub_models PROPERTIES AUTOMOC OFF AUTOUIC OFF AUTORCC OFF)
++
++if (WIN32)
++  add_executable(softionics_hub_gui WIN32
++    apps/gui/main.cpp
++    apps/gui/MainWindow.h
++    apps/gui/MainWindow.cpp
++    apps/gui/BleWorker.h
++    apps/gui/BleWorker.cpp
++    apps/gui/PositionTrackingEngine.h
++    apps/gui/PositionTrackingEngine.cpp
++    apps/gui/PositionTrackingWindow.h
++    apps/gui/PositionTrackingWindow.cpp
++  )
++else()
++  add_executable(softionics_hub_gui
++    apps/gui/main.cpp
++    apps/gui/MainWindow.h
++    apps/gui/MainWindow.cpp
++    apps/gui/BleWorker.h
++    apps/gui/BleWorker.cpp
++    apps/gui/PositionTrackingEngine.h
++    apps/gui/PositionTrackingEngine.cpp
++    apps/gui/PositionTrackingWindow.h
++    apps/gui/PositionTrackingWindow.cpp
++  )
++endif()
++
++target_sources(softionics_hub_gui PRIVATE $<TARGET_OBJECTS:hub_models>)
++
++set_source_files_properties(apps/gui/BleWorker.cpp PROPERTIES SKIP_AUTOMOC ON)
++
++target_link_libraries(softionics_hub_gui PRIVATE Qt6::Widgets Qt6::Charts hub_core)
+diff --git a/apps/gui/PositionTrackingEngine.cpp b/apps/gui/PositionTrackingEngine.cpp
+index f927def..5140e21 100644
+--- a/apps/gui/PositionTrackingEngine.cpp
++++ b/apps/gui/PositionTrackingEngine.cpp
+@@ -1,37 +1,46 @@
+-#include "PositionTrackingEngine.h"
+-
+-PositionTrackingEngine::PositionTrackingEngine(QObject* parent) : QObject(parent) {}
+-
+-void PositionTrackingEngine::setAlgorithm(QString id) {
+-    algoId_ = id.toStdString();
+-    algo_ = hub::pt::create_algorithm(algoId_);
+-    params_.clear();
+-    if (!algo_) return;
+-    params_ = algo_->defaults();
+-    algo_->set_params(params_);
+-    algo_->reset();
+-}
+-
+-void PositionTrackingEngine::setParams(QVector<double> params) {
+-    if (!algo_) return;
+-    params_.assign(params.begin(), params.end());
+-    algo_->set_params(params_);
+-}
+-
+-void PositionTrackingEngine::reset() {
+-    if (algo_) algo_->reset();
+-}
+-
+-void PositionTrackingEngine::onSample(qulonglong, QVector<float> x, bool, float) {
+-    if (!algo_) return;
+-
+-    std::vector<float> s;
+-    s.reserve((size_t)x.size());
+-    for (auto v : x) s.push_back(v);
+-
+-    hub::pt::Output out;
+-    bool ok = algo_->push_sample(s, out);
+-    if (!ok) return;
+-
+-    emit outputReady(out.x, out.y, out.z, out.q1, out.q2, out.err, out.quiet, out.valid);
+-}
++#include "PositionTrackingEngine.h"
++
++PositionTrackingEngine::PositionTrackingEngine(QObject* parent) : QObject(parent) {}
++
++void PositionTrackingEngine::setAlgorithm(QString id) {
++    algoId_ = id.toStdString();
++    algo_ = hub::pt::create_algorithm(algoId_);
++    params_.clear();
++    sampleBuf_.clear();
++    lastStatusEmitNs_ = 0;
++    if (!algo_) return;
++    params_ = algo_->defaults();
++    algo_->set_params(params_);
++    algo_->reset();
++}
++
++void PositionTrackingEngine::setParams(QVector<double> params) {
++    if (!algo_) return;
++    params_.assign(params.begin(), params.end());
++    algo_->set_params(params_);
++}
++
++void PositionTrackingEngine::reset() {
++    if (algo_) algo_->reset();
++}
++
++void PositionTrackingEngine::onSample(qulonglong t_ns, QVector<float> x, bool, float) {
++    if (!algo_) return;
++
++    if (algo_->N() > 0 && x.size() != algo_->N()) {
++        if (lastStatusEmitNs_ == 0 || (t_ns - lastStatusEmitNs_) > 500000000ULL) {
++            lastStatusEmitNs_ = t_ns;
++            emit statusReady(QString("Channel mismatch: expected %1, got %2").arg(algo_->N()).arg(x.size()));
++        }
++        return;
++    }
++
++    sampleBuf_.resize((size_t)x.size());
++    for (int i = 0; i < x.size(); ++i) sampleBuf_[(size_t)i] = x[i];
++
++    hub::pt::Output out;
++    bool ok = algo_->push_sample((uint64_t)t_ns, sampleBuf_, out);
++    if (!ok) return;
++
++    emit outputReady(out.x, out.y, out.z, out.confidence, out.q1, out.q2, out.err, out.quiet, out.valid);
++}
+diff --git a/apps/gui/PositionTrackingEngine.h b/apps/gui/PositionTrackingEngine.h
+index 4528278..cf3a659 100644
+--- a/apps/gui/PositionTrackingEngine.h
++++ b/apps/gui/PositionTrackingEngine.h
+@@ -1,32 +1,35 @@
+-#ifndef SOFTIONICS_GUI_POSITIONTRACKINGENGINE_H
+-#define SOFTIONICS_GUI_POSITIONTRACKINGENGINE_H
+-
+-#include <QObject>
+-#include <QVector>
+-#include <QString>
+-#include <memory>
+-#include <vector>
+-
+-#include "hub/model/PositionTrackingRegistry.h"
+-
+-class PositionTrackingEngine : public QObject {
+-    Q_OBJECT
+-public:
+-    explicit PositionTrackingEngine(QObject* parent = nullptr);
+-
+-public slots:
+-    void setAlgorithm(QString id);
+-    void setParams(QVector<double> params);
+-    void reset();
+-    void onSample(qulonglong t_ns, QVector<float> x, bool modelValid, float modelOut);
+-
+-signals:
+-    void outputReady(double x, double y, double z, double q1, double q2, double err, bool quiet, bool valid);
+-
+-private:
+-    std::unique_ptr<hub::pt::IAlgorithm> algo_;
+-    std::string algoId_;
+-    std::vector<double> params_;
+-};
+-
+-#endif
++#ifndef SOFTIONICS_GUI_POSITIONTRACKINGENGINE_H
++#define SOFTIONICS_GUI_POSITIONTRACKINGENGINE_H
++
++#include <QObject>
++#include <QVector>
++#include <QString>
++#include <memory>
++#include <vector>
++
++#include "hub/model/PositionTrackingRegistry.h"
++
++class PositionTrackingEngine : public QObject {
++    Q_OBJECT
++public:
++    explicit PositionTrackingEngine(QObject* parent = nullptr);
++
++public slots:
++    void setAlgorithm(QString id);
++    void setParams(QVector<double> params);
++    void reset();
++    void onSample(qulonglong t_ns, QVector<float> x, bool modelValid, float modelOut);
++
++signals:
++    void outputReady(double x, double y, double z, double confidence, double q1, double q2, double err, bool quiet, bool valid);
++    void statusReady(QString text);
++
++private:
++    std::unique_ptr<hub::pt::IAlgorithm> algo_;
++    std::string algoId_;
++    std::vector<double> params_;
++    std::vector<float> sampleBuf_;
++    qulonglong lastStatusEmitNs_ = 0;
++};
++
++#endif
+diff --git a/apps/gui/PositionTrackingWindow.cpp b/apps/gui/PositionTrackingWindow.cpp
+index 5746565..2fb77b8 100644
+--- a/apps/gui/PositionTrackingWindow.cpp
++++ b/apps/gui/PositionTrackingWindow.cpp
+@@ -1,388 +1,405 @@
+-#include "PositionTrackingWindow.h"
+-#include "BleWorker.h"
+-#include "PositionTrackingEngine.h"
+-#include "hub/model/BruteForce_16x2.h"
+-#include "FormatDoubleSpinBox.h"
+-
+-#include <QHBoxLayout>
+-#include <QVBoxLayout>
+-#include <QSplitter>
+-#include <QGroupBox>
+-#include <QPainter>
+-#include <QRectF>
+-#include <QSizePolicy>
+-#include <algorithm>
+-#include <cmath>
+-
+-PositionTrackingWindow::PositionTrackingWindow(BleWorker* worker, QWidget* parent)
+-    : QMainWindow(parent), worker_(worker) {
+-
+-    engine_ = new PositionTrackingEngine();
+-    engine_->moveToThread(&engineThread_);
+-    engineThread_.start();
+-
+-    connect(engine_, &PositionTrackingEngine::outputReady, this, &PositionTrackingWindow::onEngineOut, Qt::QueuedConnection);
+-
+-    buildUi();
+-
+-    timer_ = new QTimer(this);
+-    timer_->setInterval(16);
+-    connect(timer_, &QTimer::timeout, this, &PositionTrackingWindow::onTick);
+-    timer_->start();
+-
+-    auto algos = hub::pt::list_algorithms();
+-    for (auto& a : algos) cbAlgo_->addItem(QString::fromStdString(a.id));
+-
+-    if (cbAlgo_->count() > 0) {
+-        cbAlgo_->setCurrentIndex(0);
+-        onAlgoChanged(0);
+-    }
+-}
+-
+-PositionTrackingWindow::~PositionTrackingWindow() {
+-    if (connected_) {
+-        QObject::disconnect(worker_, &BleWorker::frameReady, engine_, &PositionTrackingEngine::onSample);
+-        connected_ = false;
+-    }
+-    engineThread_.quit();
+-    engineThread_.wait();
+-    delete engine_;
+-    engine_ = nullptr;
+-}
+-
+-void PositionTrackingWindow::showEvent(QShowEvent* e) {
+-    QMainWindow::showEvent(e);
+-    if (!connected_) {
+-        QObject::connect(worker_, &BleWorker::frameReady, engine_, &PositionTrackingEngine::onSample, Qt::QueuedConnection);
+-        connected_ = true;
+-    }
+-    if (timer_ && !timer_->isActive()) timer_->start();
+-}
+-
+-void PositionTrackingWindow::hideEvent(QHideEvent* e) {
+-    QMainWindow::hideEvent(e);
+-    if (connected_) {
+-        QObject::disconnect(worker_, &BleWorker::frameReady, engine_, &PositionTrackingEngine::onSample);
+-        connected_ = false;
+-    }
+-    if (timer_ && timer_->isActive()) timer_->stop();
+-}
+-
+-void PositionTrackingWindow::closeEvent(QCloseEvent* e) {
+-    this->hide();
+-    e->ignore();
+-}
+-
+-void PositionTrackingWindow::buildUi() {
+-    setWindowTitle("PositionTracking");
+-    resize(1350, 980);
+-
+-    auto* central = new QWidget(this);
+-    auto* root = new QHBoxLayout(central);
+-
+-    auto* split = new QSplitter(Qt::Horizontal, central);
+-    split->setChildrenCollapsible(false);
+-
+-    // ---- plot ----
+-    auto* plotW = new QWidget(split);
+-    auto* plotL = new QVBoxLayout(plotW);
+-
+-    chart_ = new QChart();
+-    chart_->legend()->hide();
+-
+-    axX_ = new QValueAxis();
+-    axY_ = new QValueAxis();
+-    axX_->setLabelFormat("%.3f");
+-    axY_->setLabelFormat("%.3f");
+-    chart_->addAxis(axX_, Qt::AlignBottom);
+-    chart_->addAxis(axY_, Qt::AlignLeft);
+-
+-    sensors_ = new QScatterSeries(chart_);
+-    sensors_->setMarkerSize(6.0);
+-    chart_->addSeries(sensors_);
+-    sensors_->attachAxis(axX_);
+-    sensors_->attachAxis(axY_);
+-
+-    path_ = new QLineSeries(chart_);
+-    chart_->addSeries(path_);
+-    path_->attachAxis(axX_);
+-    path_->attachAxis(axY_);
+-
+-    cur_ = new QScatterSeries(chart_);
+-    cur_->setMarkerSize(12.0);
+-    chart_->addSeries(cur_);
+-    cur_->attachAxis(axX_);
+-    cur_->attachAxis(axY_);
+-
+-    view_ = new QChartView(chart_, plotW);
+-    view_->setRenderHint(QPainter::Antialiasing, true);
+-    plotL->addWidget(view_, 1);
+-
+-    lbStats_ = new QLabel("waiting...", plotW);
+-    lbStats_->setObjectName("StatusLabel");
+-    lbStats_->setTextInteractionFlags(Qt::TextSelectableByMouse);
+-    plotL->addWidget(lbStats_);
+-
+-    connect(chart_, &QChart::plotAreaChanged, this, [this](const QRectF&) { updateAxesAndDraw(); });
+-
+-    split->addWidget(plotW);
+-
+-    // ---- controls ----
+-    auto* ctrlW = new QWidget(split);
+-    ctrlW->setMinimumWidth(520);
+-    auto* ctrlL = new QVBoxLayout(ctrlW);
+-
+-    auto* gSel = new QGroupBox("Model", ctrlW);
+-    auto* selL = new QVBoxLayout(gSel);
+-
+-    cbAlgo_ = new QComboBox(gSel);
+-    lbAlgoInfo_ = new QLabel("-", gSel);
+-    lbAlgoInfo_->setObjectName("StatusLabel");
+-
+-    selL->addWidget(cbAlgo_);
+-    selL->addWidget(lbAlgoInfo_);
+-    ctrlL->addWidget(gSel, 0);
+-
+-    auto* gParams = new QGroupBox("Params", ctrlW);
+-    gParams->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+-    auto* gPL = new QVBoxLayout(gParams);
+-
+-    auto* scroll = new QScrollArea(gParams);
+-    scroll->setWidgetResizable(true);
+-    scroll->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+-    scroll->setMinimumHeight(720);
+-
+-    paramBox_ = new QWidget(scroll);
+-    paramForm_ = new QFormLayout(paramBox_);
+-    paramForm_->setVerticalSpacing(10);
+-    paramForm_->setHorizontalSpacing(12);
+-    paramForm_->setFormAlignment(Qt::AlignTop);
+-    paramForm_->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
+-    paramBox_->setLayout(paramForm_);
+-    scroll->setWidget(paramBox_);
+-
+-    gPL->addWidget(scroll, 1);
+-
+-    btnApply_ = new QPushButton("Apply", gParams);
+-    gPL->addWidget(btnApply_, 0);
+-
+-    ctrlL->addWidget(gParams, 1);
+-
+-    auto* gTools = new QGroupBox("Tools", ctrlW);
+-    auto* tL = new QVBoxLayout(gTools);
+-
+-    spPathLen_ = new QSpinBox(gTools);
+-    spPathLen_->setRange(1, 5000);
+-    spPathLen_->setValue(40);
+-
+-    btnReset_ = new QPushButton("Reset", gTools);
+-    btnClear_ = new QPushButton("Clear Path", gTools);
+-
+-    tL->addWidget(new QLabel("Path points", gTools));
+-    tL->addWidget(spPathLen_);
+-    tL->addWidget(btnReset_);
+-    tL->addWidget(btnClear_);
+-
+-    ctrlL->addWidget(gTools, 0);
+-    ctrlL->addStretch(1);
+-
+-    connect(cbAlgo_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PositionTrackingWindow::onAlgoChanged);
+-    connect(btnApply_, &QPushButton::clicked, this, &PositionTrackingWindow::onApplyParams);
+-    connect(btnReset_, &QPushButton::clicked, this, &PositionTrackingWindow::onResetAlgo);
+-    connect(btnClear_, &QPushButton::clicked, this, &PositionTrackingWindow::onClearPath);
+-
+-    split->addWidget(ctrlW);
+-
+-    split->setStretchFactor(0, 12);
+-    split->setStretchFactor(1, 6);
+-
+-    root->addWidget(split);
+-    setCentralWidget(central);
+-}
+-
+-void PositionTrackingWindow::onAlgoChanged(int idx) {
+-    if (idx < 0) return;
+-
+-    std::string id = cbAlgo_->itemText(idx).toStdString();
+-    curInfo_ = hub::pt::get_algorithm_info(id);
+-
+-    lbAlgoInfo_->setText(QString("id=%1  N=%2  M=%3")
+-        .arg(QString::fromStdString(curInfo_.id))
+-        .arg(curInfo_.N)
+-        .arg(curInfo_.M));
+-
+-    rebuildParamUi(curInfo_);
+-
+-    QMetaObject::invokeMethod(engine_, "setAlgorithm", Qt::QueuedConnection, Q_ARG(QString, QString::fromStdString(id)));
+-    QMetaObject::invokeMethod(engine_, "setParams", Qt::QueuedConnection, Q_ARG(QVector<double>, collectParams()));
+-    QMetaObject::invokeMethod(engine_, "reset", Qt::QueuedConnection);
+-
+-    pending_.clear();
+-    pathBuf_.clear();
+-    last_ = {false,false,0,0,0,0,0,0};
+-
+-    sensors_->clear();
+-    if (curInfo_.N == 16) {
+-        auto sens = hub::BruteForce_16x2Solver::sensor_positions();
+-        for (int i = 0; i < 16; ++i) sensors_->append(sens[i].x, sens[i].y);
+-    }
+-
+-    updateAxesAndDraw();
+-}
+-
+-void PositionTrackingWindow::rebuildParamUi(const hub::pt::AlgoInfo& info) {
+-    while (paramForm_->rowCount() > 0) paramForm_->removeRow(0);
+-    paramSpins_.clear();
+-
+-    for (size_t i = 0; i < info.params.size(); ++i) {
+-        const auto& p = info.params[i];
+-
+-        auto* sp = new FormatDoubleSpinBox(paramBox_);
+-        sp->setRange(p.minv, p.maxv);
+-        sp->setValue(p.defv);
+-        sp->setMinimumWidth(260);
+-        sp->setMinimumHeight(28);
+-
+-        // ✅ R/C: scientific + 내부 decimals 18 (0으로 안 죽음) + stepBy()가 ×10/÷10
+-        if (p.key == "rc_r" || p.key == "rc_c") {
+-            sp->setMode(FormatDoubleSpinBox::Mode::Scientific);
+-            sp->setSciDigits(6, 18);
+-        }
+-        // ✅ 나머지: fixed(decimal). 특히 step은 0.001이므로 최소 6자리 확보
+-        else {
+-            sp->setMode(FormatDoubleSpinBox::Mode::Fixed);
+-
+-            if (p.key == "ema_a") {
+-                sp->setFixedDecimals(4);
+-                sp->setSingleStep(0.01);
+-            } else if (p.key == "quiet") {
+-                sp->setFixedDecimals(6);
+-                sp->setSingleStep(0.05);
+-            } else if (p.key == "step") {
+-                sp->setFixedDecimals(6);       // 0.001000 표시/저장 가능
+-                sp->setSingleStep(0.0001);
+-            } else if (p.key == "xmin" || p.key == "xmax" || p.key == "ymin" || p.key == "ymax" || p.key == "zmin" || p.key == "zmax") {
+-                sp->setFixedDecimals(5);
+-                sp->setSingleStep(0.001);
+-            } else {
+-                sp->setFixedDecimals(8);
+-            }
+-        }
+-
+-        paramForm_->addRow(QString::fromStdString(p.label), sp);
+-        paramSpins_.push_back(sp);
+-    }
+-}
+-
+-QVector<double> PositionTrackingWindow::collectParams() const {
+-    QVector<double> v;
+-    v.reserve(paramSpins_.size());
+-    for (auto* sp : paramSpins_) v.push_back(sp->value());
+-    return v;
+-}
+-
+-void PositionTrackingWindow::onApplyParams() {
+-    QMetaObject::invokeMethod(engine_, "setParams", Qt::QueuedConnection, Q_ARG(QVector<double>, collectParams()));
+-}
+-
+-void PositionTrackingWindow::onResetAlgo() {
+-    QMetaObject::invokeMethod(engine_, "reset", Qt::QueuedConnection);
+-    pending_.clear();
+-    pathBuf_.clear();
+-    last_ = {false,false,0,0,0,0,0,0};
+-    updateAxesAndDraw();
+-}
+-
+-void PositionTrackingWindow::onClearPath() {
+-    pathBuf_.clear();
+-    updateAxesAndDraw();
+-}
+-
+-void PositionTrackingWindow::onEngineOut(double x, double y, double z, double q1, double q2, double err, bool quiet, bool valid) {
+-    pending_.push_back(OutPkt{valid, quiet, x, y, z, q1, q2, err});
+-}
+-
+-void PositionTrackingWindow::onTick() {
+-    if (!pending_.isEmpty()) {
+-        auto local = pending_;
+-        pending_.clear();
+-
+-        for (const auto& p : local) {
+-            if (!p.valid) continue;
+-            last_ = p;
+-
+-            if (p.quiet) {
+-                if (!pathBuf_.isEmpty()) pathBuf_.removeFirst();
+-            } else {
+-                pathBuf_.append(QPointF(p.x, p.y));
+-                while (pathBuf_.size() > spPathLen_->value()) pathBuf_.removeFirst();
+-            }
+-        }
+-    }
+-    updateAxesAndDraw();
+-}
+-
+-void PositionTrackingWindow::updateAxesAndDraw() {
+-    if (last_.valid) {
+-        QVector<QPointF> cur;
+-        cur.push_back(QPointF(last_.x, last_.y));
+-        cur_->replace(cur);
+-    } else {
+-        cur_->clear();
+-    }
+-    path_->replace(pathBuf_);
+-
+-    if (last_.valid) {
+-        lbStats_->setText(QString("x=%1  y=%2  z=%3  err=%4  %5")
+-            .arg(last_.x, 0, 'g', 6)
+-            .arg(last_.y, 0, 'g', 6)
+-            .arg(last_.z, 0, 'g', 6)
+-            .arg(last_.err, 0, 'g', 6)
+-            .arg(last_.quiet ? "QUIET" : "ACTIVE"));
+-    } else {
+-        lbStats_->setText("waiting...");
+-    }
+-
+-    double minx = -0.03, maxx = 0.03;
+-    double miny = -0.03, maxy = 0.03;
+-
+-    if (curInfo_.N == 16) {
+-        auto sens = hub::BruteForce_16x2Solver::sensor_positions();
+-        minx = maxx = sens[0].x;
+-        miny = maxy = sens[0].y;
+-        for (int i = 1; i < 16; ++i) {
+-            minx = std::min(minx, sens[i].x); maxx = std::max(maxx, sens[i].x);
+-            miny = std::min(miny, sens[i].y); maxy = std::max(maxy, sens[i].y);
+-        }
+-    }
+-
+-    for (const auto& p : pathBuf_) {
+-        minx = std::min(minx, p.x()); maxx = std::max(maxx, p.x());
+-        miny = std::min(miny, p.y()); maxy = std::max(maxy, p.y());
+-    }
+-
+-    if (last_.valid) {
+-        minx = std::min(minx, last_.x); maxx = std::max(maxx, last_.x);
+-        miny = std::min(miny, last_.y); maxy = std::max(maxy, last_.y);
+-    }
+-
+-    double cx = 0.5 * (minx + maxx);
+-    double cy = 0.5 * (miny + maxy);
+-
+-    double rx = std::max(1e-6, maxx - minx);
+-    double ry = std::max(1e-6, maxy - miny);
+-
+-    QRectF pa = chart_->plotArea();
+-    double w = std::max(1.0, pa.width());
+-    double h = std::max(1.0, pa.height());
+-    double aspect = w / h;
+-
+-    double ySpan = std::max(ry, rx / aspect);
+-    double xSpan = ySpan * aspect;
+-
+-    xSpan *= 1.15;
+-    ySpan *= 1.15;
+-
+-    axX_->setRange(cx - 0.5 * xSpan, cx + 0.5 * xSpan);
+-    axY_->setRange(cy - 0.5 * ySpan, cy + 0.5 * ySpan);
+-}
++#include "PositionTrackingWindow.h"
++#include "BleWorker.h"
++#include "PositionTrackingEngine.h"
++#include "hub/model/BruteForce_16x2.h"
++#include "FormatDoubleSpinBox.h"
++
++#include <QHBoxLayout>
++#include <QVBoxLayout>
++#include <QSplitter>
++#include <QGroupBox>
++#include <QPainter>
++#include <QRectF>
++#include <QSizePolicy>
++#include <QtCore/QOverload>
++#include <algorithm>
++#include <cmath>
++
++PositionTrackingWindow::PositionTrackingWindow(BleWorker* worker, QWidget* parent)
++    : QMainWindow(parent), worker_(worker) {
++
++    engine_ = new PositionTrackingEngine();
++    engine_->moveToThread(&engineThread_);
++    engineThread_.start();
++
++    connect(engine_, &PositionTrackingEngine::outputReady, this, &PositionTrackingWindow::onEngineOut, Qt::QueuedConnection);
++    connect(engine_, &PositionTrackingEngine::statusReady, this, &PositionTrackingWindow::onEngineStatus, Qt::QueuedConnection);
++
++    buildUi();
++
++    paramTimer_ = new QTimer(this);
++    paramTimer_->setSingleShot(true);
++    paramTimer_->setInterval(80);
++    connect(paramTimer_, &QTimer::timeout, this, &PositionTrackingWindow::onApplyParams);
++
++    timer_ = new QTimer(this);
++    timer_->setInterval(16);
++    connect(timer_, &QTimer::timeout, this, &PositionTrackingWindow::onTick);
++    timer_->start();
++
++    auto algos = hub::pt::list_algorithms();
++    for (auto& a : algos) cbAlgo_->addItem(QString::fromStdString(a.id));
++
++    if (cbAlgo_->count() > 0) {
++        cbAlgo_->setCurrentIndex(0);
++        onAlgoChanged(0);
++    }
++}
++
++PositionTrackingWindow::~PositionTrackingWindow() {
++    if (connected_) {
++        QObject::disconnect(worker_, &BleWorker::frameReady, engine_, &PositionTrackingEngine::onSample);
++        connected_ = false;
++    }
++    engineThread_.quit();
++    engineThread_.wait();
++    delete engine_;
++    engine_ = nullptr;
++}
++
++void PositionTrackingWindow::showEvent(QShowEvent* e) {
++    QMainWindow::showEvent(e);
++    if (!connected_) {
++        QObject::connect(worker_, &BleWorker::frameReady, engine_, &PositionTrackingEngine::onSample, Qt::QueuedConnection);
++        connected_ = true;
++    }
++    if (timer_ && !timer_->isActive()) timer_->start();
++}
++
++void PositionTrackingWindow::hideEvent(QHideEvent* e) {
++    QMainWindow::hideEvent(e);
++    if (connected_) {
++        QObject::disconnect(worker_, &BleWorker::frameReady, engine_, &PositionTrackingEngine::onSample);
++        connected_ = false;
++    }
++    if (timer_ && timer_->isActive()) timer_->stop();
++}
++
++void PositionTrackingWindow::closeEvent(QCloseEvent* e) {
++    this->hide();
++    e->ignore();
++}
++
++void PositionTrackingWindow::buildUi() {
++    setWindowTitle("PositionTracking");
++    resize(1350, 980);
++
++    auto* central = new QWidget(this);
++    auto* root = new QHBoxLayout(central);
++
++    auto* split = new QSplitter(Qt::Horizontal, central);
++    split->setChildrenCollapsible(false);
++
++    auto* plotW = new QWidget(split);
++    auto* plotL = new QVBoxLayout(plotW);
++
++    chart_ = new QChart();
++    chart_->legend()->hide();
++
++    axX_ = new QValueAxis();
++    axY_ = new QValueAxis();
++    axX_->setLabelFormat("%.3f");
++    axY_->setLabelFormat("%.3f");
++    chart_->addAxis(axX_, Qt::AlignBottom);
++    chart_->addAxis(axY_, Qt::AlignLeft);
++
++    sensors_ = new QScatterSeries(chart_);
++    sensors_->setMarkerSize(6.0);
++    chart_->addSeries(sensors_);
++    sensors_->attachAxis(axX_);
++    sensors_->attachAxis(axY_);
++
++    path_ = new QLineSeries(chart_);
++    chart_->addSeries(path_);
++    path_->attachAxis(axX_);
++    path_->attachAxis(axY_);
++
++    cur_ = new QScatterSeries(chart_);
++    cur_->setMarkerSize(12.0);
++    chart_->addSeries(cur_);
++    cur_->attachAxis(axX_);
++    cur_->attachAxis(axY_);
++
++    view_ = new QChartView(chart_, plotW);
++    view_->setRenderHint(QPainter::Antialiasing, true);
++    plotL->addWidget(view_, 1);
++
++    lbStats_ = new QLabel("waiting...", plotW);
++    lbStats_->setObjectName("StatusLabel");
++    lbStats_->setTextInteractionFlags(Qt::TextSelectableByMouse);
++    plotL->addWidget(lbStats_);
++
++    connect(chart_, &QChart::plotAreaChanged, this, [this](const QRectF&) { updateAxesAndDraw(); });
++
++    split->addWidget(plotW);
++
++    auto* ctrlW = new QWidget(split);
++    ctrlW->setMinimumWidth(520);
++    auto* ctrlL = new QVBoxLayout(ctrlW);
++
++    auto* gSel = new QGroupBox("Model", ctrlW);
++    auto* selL = new QVBoxLayout(gSel);
++
++    cbAlgo_ = new QComboBox(gSel);
++    lbAlgoInfo_ = new QLabel("-", gSel);
++    lbAlgoInfo_->setObjectName("StatusLabel");
++
++    selL->addWidget(cbAlgo_);
++    selL->addWidget(lbAlgoInfo_);
++    ctrlL->addWidget(gSel, 0);
++
++    auto* gParams = new QGroupBox("Params", ctrlW);
++    gParams->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
++    auto* gPL = new QVBoxLayout(gParams);
++
++    auto* scroll = new QScrollArea(gParams);
++    scroll->setWidgetResizable(true);
++    scroll->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
++    scroll->setMinimumHeight(720);
++
++    paramBox_ = new QWidget(scroll);
++    paramForm_ = new QFormLayout(paramBox_);
++    paramForm_->setVerticalSpacing(10);
++    paramForm_->setHorizontalSpacing(12);
++    paramForm_->setFormAlignment(Qt::AlignTop);
++    paramForm_->setLabelAlignment(Qt::AlignLeft | Qt::AlignVCenter);
++    paramBox_->setLayout(paramForm_);
++    scroll->setWidget(paramBox_);
++
++    gPL->addWidget(scroll, 1);
++
++    btnApply_ = new QPushButton("Apply", gParams);
++    gPL->addWidget(btnApply_, 0);
++
++    ctrlL->addWidget(gParams, 1);
++
++    auto* gTools = new QGroupBox("Tools", ctrlW);
++    auto* tL = new QVBoxLayout(gTools);
++
++    spPathLen_ = new QSpinBox(gTools);
++    spPathLen_->setRange(1, 5000);
++    spPathLen_->setValue(40);
++
++    btnReset_ = new QPushButton("Reset", gTools);
++    btnClear_ = new QPushButton("Clear Path", gTools);
++
++    tL->addWidget(new QLabel("Path points", gTools));
++    tL->addWidget(spPathLen_);
++    tL->addWidget(btnReset_);
++    tL->addWidget(btnClear_);
++
++    ctrlL->addWidget(gTools, 0);
++    ctrlL->addStretch(1);
++
++    connect(cbAlgo_, QOverload<int>::of(&QComboBox::currentIndexChanged), this, &PositionTrackingWindow::onAlgoChanged);
++    connect(btnApply_, &QPushButton::clicked, this, &PositionTrackingWindow::onApplyParams);
++    connect(btnReset_, &QPushButton::clicked, this, &PositionTrackingWindow::onResetAlgo);
++    connect(btnClear_, &QPushButton::clicked, this, &PositionTrackingWindow::onClearPath);
++
++    split->addWidget(ctrlW);
++
++    split->setStretchFactor(0, 12);
++    split->setStretchFactor(1, 6);
++
++    root->addWidget(split);
++    setCentralWidget(central);
++}
++
++void PositionTrackingWindow::onAlgoChanged(int idx) {
++    if (idx < 0) return;
++
++    std::string id = cbAlgo_->itemText(idx).toStdString();
++    curInfo_ = hub::pt::get_algorithm_info(id);
++
++    lbAlgoInfo_->setText(QString("id=%1  N=%2  M=%3")
++        .arg(QString::fromStdString(curInfo_.id))
++        .arg(curInfo_.N)
++        .arg(curInfo_.M));
++
++    rebuildParamUi(curInfo_);
++
++    QMetaObject::invokeMethod(engine_, "setAlgorithm", Qt::QueuedConnection, Q_ARG(QString, QString::fromStdString(id)));
++    QMetaObject::invokeMethod(engine_, "setParams", Qt::QueuedConnection, Q_ARG(QVector<double>, collectParams()));
++    QMetaObject::invokeMethod(engine_, "reset", Qt::QueuedConnection);
++
++    pending_.clear();
++    pathBuf_.clear();
++    last_ = {false, false, 0, 0, 0, 0, 0, 0, 0};
++    engineStatusText_.clear();
++
++    sensors_->clear();
++    if (curInfo_.N == 16) {
++        auto sens = hub::BruteForce_16x2Solver::sensor_positions();
++        for (int i = 0; i < 16; ++i) sensors_->append(sens[i].x, sens[i].y);
++    }
++
++    updateAxesAndDraw();
++}
++
++void PositionTrackingWindow::rebuildParamUi(const hub::pt::AlgoInfo& info) {
++    while (paramForm_->rowCount() > 0) paramForm_->removeRow(0);
++    paramSpins_.clear();
++
++    for (size_t i = 0; i < info.params.size(); ++i) {
++        const auto& p = info.params[i];
++
++        auto* sp = new FormatDoubleSpinBox(paramBox_);
++        sp->blockSignals(true);
++        sp->setRange(p.minv, p.maxv);
++        double v0 = p.defv;
++        if (i < info.defaults.size()) v0 = info.defaults[i];
++        sp->setValue(v0);
++        sp->setMinimumWidth(260);
++        sp->setMinimumHeight(28);
++
++        if (p.scientific) {
++            sp->setMode(FormatDoubleSpinBox::Mode::Scientific);
++            int internalDecimals = (p.decimals >= 0) ? p.decimals : 18;
++            sp->setSciDigits(6, internalDecimals);
++        } else {
++            sp->setMode(FormatDoubleSpinBox::Mode::Fixed);
++            int d = (p.decimals >= 0) ? p.decimals : 6;
++            sp->setFixedDecimals(d);
++            if (p.step > 0.0) sp->setSingleStep(p.step);
++        }
++
++        sp->blockSignals(false);
++
++        connect(sp, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) {
++            if (paramTimer_) paramTimer_->start();
++        });
++
++        paramForm_->addRow(QString::fromStdString(p.label), sp);
++        paramSpins_.push_back(sp);
++    }
++}
++
++QVector<double> PositionTrackingWindow::collectParams() const {
++    QVector<double> v;
++    v.reserve(paramSpins_.size());
++    for (auto* sp : paramSpins_) v.push_back(sp->value());
++    return v;
++}
++
++void PositionTrackingWindow::onApplyParams() {
++    QMetaObject::invokeMethod(engine_, "setParams", Qt::QueuedConnection, Q_ARG(QVector<double>, collectParams()));
++}
++
++void PositionTrackingWindow::onResetAlgo() {
++    QMetaObject::invokeMethod(engine_, "reset", Qt::QueuedConnection);
++    pending_.clear();
++    pathBuf_.clear();
++    last_ = {false, false, 0, 0, 0, 0, 0, 0, 0};
++    engineStatusText_.clear();
++    updateAxesAndDraw();
++}
++
++void PositionTrackingWindow::onClearPath() {
++    pathBuf_.clear();
++    updateAxesAndDraw();
++}
++
++void PositionTrackingWindow::onEngineOut(double x, double y, double z, double confidence, double q1, double q2, double err, bool quiet, bool valid) {
++    engineStatusText_.clear();
++    pending_.push_back(OutPkt{valid, quiet, x, y, z, confidence, q1, q2, err});
++}
++
++void PositionTrackingWindow::onEngineStatus(QString text) {
++    engineStatusText_ = text;
++}
++
++void PositionTrackingWindow::onTick() {
++    if (!pending_.isEmpty()) {
++        auto local = pending_;
++        pending_.clear();
++
++        for (const auto& p : local) {
++            last_ = p;
++            if (!p.valid) continue;
++
++            if (p.quiet) {
++                if (!pathBuf_.isEmpty()) pathBuf_.removeFirst();
++            } else {
++                pathBuf_.append(QPointF(p.x, p.y));
++                while (pathBuf_.size() > spPathLen_->value()) pathBuf_.removeFirst();
++            }
++        }
++    }
++    updateAxesAndDraw();
++}
++
++void PositionTrackingWindow::updateAxesAndDraw() {
++    if (last_.valid) {
++        QVector<QPointF> cur;
++        cur.push_back(QPointF(last_.x, last_.y));
++        cur_->setMarkerSize(6.0 + 12.0 * std::clamp(last_.confidence, 0.0, 1.0));
++        cur_->replace(cur);
++    } else {
++        cur_->setMarkerSize(12.0);
++        cur_->clear();
++    }
++    path_->replace(pathBuf_);
++
++    if (last_.valid) {
++        lbStats_->setText(QString("x=%1  y=%2  z=%3  conf=%4  err=%5  %6")
++            .arg(last_.x, 0, 'g', 6)
++            .arg(last_.y, 0, 'g', 6)
++            .arg(last_.z, 0, 'g', 6)
++            .arg(last_.confidence, 0, 'g', 6)
++            .arg(last_.err, 0, 'g', 6)
++            .arg(last_.quiet ? "QUIET" : "ACTIVE"));
++    } else if (!engineStatusText_.isEmpty()) {
++        lbStats_->setText(engineStatusText_);
++    } else {
++        lbStats_->setText("waiting...");
++    }
++
++    double minx = -0.03, maxx = 0.03;
++    double miny = -0.03, maxy = 0.03;
++
++    if (curInfo_.N == 16) {
++        auto sens = hub::BruteForce_16x2Solver::sensor_positions();
++        minx = maxx = sens[0].x;
++        miny = maxy = sens[0].y;
++        for (int i = 1; i < 16; ++i) {
++            minx = std::min(minx, sens[i].x);
++            maxx = std::max(maxx, sens[i].x);
++            miny = std::min(miny, sens[i].y);
++            maxy = std::max(maxy, sens[i].y);
++        }
++    }
++
++    for (const auto& p : pathBuf_) {
++        minx = std::min(minx, p.x());
++        maxx = std::max(maxx, p.x());
++        miny = std::min(miny, p.y());
++        maxy = std::max(maxy, p.y());
++    }
++
++    if (last_.valid) {
++        minx = std::min(minx, last_.x);
++        maxx = std::max(maxx, last_.x);
++        miny = std::min(miny, last_.y);
++        maxy = std::max(maxy, last_.y);
++    }
++
++    double cx = 0.5 * (minx + maxx);
++    double cy = 0.5 * (miny + maxy);
++
++    double rx = std::max(1e-6, maxx - minx);
++    double ry = std::max(1e-6, maxy - miny);
++
++    QRectF pa = chart_->plotArea();
++    double w = std::max(1.0, pa.width());
++    double h = std::max(1.0, pa.height());
++    double aspect = w / h;
++
++    double ySpan = std::max(ry, rx / aspect);
++    double xSpan = ySpan * aspect;
++
++    xSpan *= 1.15;
++    ySpan *= 1.15;
++
++    axX_->setRange(cx - 0.5 * xSpan, cx + 0.5 * xSpan);
++    axY_->setRange(cy - 0.5 * ySpan, cy + 0.5 * ySpan);
++}
+diff --git a/apps/gui/PositionTrackingWindow.h b/apps/gui/PositionTrackingWindow.h
+index 00e4d73..69603e2 100644
+--- a/apps/gui/PositionTrackingWindow.h
++++ b/apps/gui/PositionTrackingWindow.h
+@@ -1,100 +1,103 @@
+-#ifndef SOFTIONICS_GUI_POSITIONTRACKINGWINDOW_H
+-#define SOFTIONICS_GUI_POSITIONTRACKINGWINDOW_H
+-
+-#include <QMainWindow>
+-#include <QThread>
+-#include <QTimer>
+-#include <QVector>
+-#include <QPointF>
+-#include <QComboBox>
+-#include <QFormLayout>
+-#include <QScrollArea>
+-#include <QPushButton>
+-#include <QSpinBox>
+-#include <QLabel>
+-#include <QShowEvent>
+-#include <QHideEvent>
+-#include <QCloseEvent>
+-
+-#include <QtCharts/QChartView>
+-#include <QtCharts/QChart>
+-#include <QtCharts/QValueAxis>
+-#include <QtCharts/QScatterSeries>
+-#include <QtCharts/QLineSeries>
+-
+-#include "hub/model/PositionTrackingRegistry.h"
+-
+-class BleWorker;
+-class PositionTrackingEngine;
+-
+-class PositionTrackingWindow : public QMainWindow {
+-    Q_OBJECT
+-public:
+-    explicit PositionTrackingWindow(BleWorker* worker, QWidget* parent = nullptr);
+-    ~PositionTrackingWindow();
+-
+-protected:
+-    void showEvent(QShowEvent* e) override;
+-    void hideEvent(QHideEvent* e) override;
+-    void closeEvent(QCloseEvent* e) override;
+-
+-private slots:
+-    void onAlgoChanged(int idx);
+-    void onApplyParams();
+-    void onResetAlgo();
+-    void onClearPath();
+-
+-    void onEngineOut(double x, double y, double z, double q1, double q2, double err, bool quiet, bool valid);
+-    void onTick();
+-
+-private:
+-    void buildUi();
+-    void rebuildParamUi(const hub::pt::AlgoInfo& info);
+-    QVector<double> collectParams() const;
+-    void updateAxesAndDraw();
+-
+-private:
+-    struct OutPkt {
+-        bool valid;
+-        bool quiet;
+-        double x, y, z, q1, q2, err;
+-    };
+-
+-    BleWorker* worker_ = nullptr;
+-
+-    QThread engineThread_;
+-    PositionTrackingEngine* engine_ = nullptr;
+-
+-    QTimer* timer_ = nullptr;
+-
+-    QComboBox* cbAlgo_ = nullptr;
+-    QLabel* lbAlgoInfo_ = nullptr;
+-
+-    QWidget* paramBox_ = nullptr;
+-    QFormLayout* paramForm_ = nullptr;
+-    QVector<QDoubleSpinBox*> paramSpins_;
+-    hub::pt::AlgoInfo curInfo_;
+-
+-    QPushButton* btnApply_ = nullptr;
+-    QPushButton* btnReset_ = nullptr;
+-    QPushButton* btnClear_ = nullptr;
+-    QSpinBox* spPathLen_ = nullptr;
+-
+-    QChartView* view_ = nullptr;
+-    QChart* chart_ = nullptr;
+-    QValueAxis* axX_ = nullptr;
+-    QValueAxis* axY_ = nullptr;
+-    QScatterSeries* sensors_ = nullptr;
+-    QLineSeries* path_ = nullptr;
+-    QScatterSeries* cur_ = nullptr;
+-
+-    QLabel* lbStats_ = nullptr;
+-
+-    QVector<OutPkt> pending_;
+-    QVector<QPointF> pathBuf_;
+-    OutPkt last_{false,false,0,0,0,0,0,0};
+-
+-    bool connected_ = false;
+-};
+-
+-#endif
++#ifndef SOFTIONICS_GUI_POSITIONTRACKINGWINDOW_H
++#define SOFTIONICS_GUI_POSITIONTRACKINGWINDOW_H
++
++#include <QMainWindow>
++#include <QThread>
++#include <QTimer>
++#include <QVector>
++#include <QPointF>
++#include <QComboBox>
++#include <QFormLayout>
++#include <QScrollArea>
++#include <QPushButton>
++#include <QSpinBox>
++#include <QLabel>
++#include <QShowEvent>
++#include <QHideEvent>
++#include <QCloseEvent>
++
++#include <QtCharts/QChartView>
++#include <QtCharts/QChart>
++#include <QtCharts/QValueAxis>
++#include <QtCharts/QScatterSeries>
++#include <QtCharts/QLineSeries>
++
++#include "hub/model/PositionTrackingRegistry.h"
++
++class BleWorker;
++class PositionTrackingEngine;
++
++class PositionTrackingWindow : public QMainWindow {
++    Q_OBJECT
++public:
++    explicit PositionTrackingWindow(BleWorker* worker, QWidget* parent = nullptr);
++    ~PositionTrackingWindow();
++
++protected:
++    void showEvent(QShowEvent* e) override;
++    void hideEvent(QHideEvent* e) override;
++    void closeEvent(QCloseEvent* e) override;
++
++private slots:
++    void onAlgoChanged(int idx);
++    void onApplyParams();
++    void onResetAlgo();
++    void onClearPath();
++
++    void onEngineOut(double x, double y, double z, double confidence, double q1, double q2, double err, bool quiet, bool valid);
++    void onEngineStatus(QString text);
++    void onTick();
++
++private:
++    void buildUi();
++    void rebuildParamUi(const hub::pt::AlgoInfo& info);
++    QVector<double> collectParams() const;
++    void updateAxesAndDraw();
++
++private:
++    struct OutPkt {
++        bool valid;
++        bool quiet;
++        double x, y, z, confidence, q1, q2, err;
++    };
++
++    BleWorker* worker_ = nullptr;
++
++    QThread engineThread_;
++    PositionTrackingEngine* engine_ = nullptr;
++
++    QTimer* timer_ = nullptr;
++    QTimer* paramTimer_ = nullptr;
++
++    QComboBox* cbAlgo_ = nullptr;
++    QLabel* lbAlgoInfo_ = nullptr;
++
++    QWidget* paramBox_ = nullptr;
++    QFormLayout* paramForm_ = nullptr;
++    QVector<QDoubleSpinBox*> paramSpins_;
++    hub::pt::AlgoInfo curInfo_;
++
++    QPushButton* btnApply_ = nullptr;
++    QPushButton* btnReset_ = nullptr;
++    QPushButton* btnClear_ = nullptr;
++    QSpinBox* spPathLen_ = nullptr;
++
++    QChartView* view_ = nullptr;
++    QChart* chart_ = nullptr;
++    QValueAxis* axX_ = nullptr;
++    QValueAxis* axY_ = nullptr;
++    QScatterSeries* sensors_ = nullptr;
++    QLineSeries* path_ = nullptr;
++    QScatterSeries* cur_ = nullptr;
++
++    QLabel* lbStats_ = nullptr;
++
++    QVector<OutPkt> pending_;
++    QVector<QPointF> pathBuf_;
++    OutPkt last_{false, false, 0, 0, 0, 0, 0, 0, 0};
++    QString engineStatusText_;
++
++    bool connected_ = false;
++};
++
++#endif
+diff --git a/core/include/hub/model/ExampleAlgo_16x1.h b/core/include/hub/model/ExampleAlgo_16x1.h
+new file mode 100644
+index 0000000..391043f
+--- /dev/null
++++ b/core/include/hub/model/ExampleAlgo_16x1.h
+@@ -0,0 +1,114 @@
++#ifndef HUB_MODEL_EXAMPLEALGO_16X1_H
++#define HUB_MODEL_EXAMPLEALGO_16X1_H
++
++#include "hub/model/PositionTrackingRegistry.h"
++
++#include <algorithm>
++#include <cmath>
++
++namespace hub::pt {
++
++class ExampleAlgo_16x1 final : public IAlgorithm {
++public:
++    ExampleAlgo_16x1() {
++        set_params(defaults());
++        reset();
++    }
++
++    const std::string& id() const override {
++        static std::string s = "ExampleAlgo_16x1";
++        return s;
++    }
++
++    int N() const override { return 16; }
++    int M() const override { return 1; }
++
++    std::vector<ParamDesc> params() const override {
++        return {
++            {"scale", "Scale", 0.0, 0.2, 0.03, 0.001, 6, false},
++            {"gain", "Conf gain", 0.0, 50.0, 5.0, 0.1, 4, false},
++            {"min_conf", "Min conf", 0.0, 1.0, 0.15, 0.01, 4, false}
++        };
++    }
++
++    std::vector<double> defaults() const override {
++        auto p = params();
++        std::vector<double> d;
++        d.reserve(p.size());
++        for (auto& x : p) d.push_back(x.defv);
++        return d;
++    }
++
++    void set_params(const std::vector<double>& values) override {
++        auto d = defaults();
++        params_ = values;
++        if (params_.size() < d.size()) params_.resize(d.size(), 0.0);
++
++        scale_ = params_[0];
++        gain_ = params_[1];
++        min_conf_ = params_[2];
++
++        if (scale_ < 0.0) scale_ = 0.0;
++        if (gain_ < 0.0) gain_ = 0.0;
++        min_conf_ = std::clamp(min_conf_, 0.0, 1.0);
++
++        params_[0] = scale_;
++        params_[1] = gain_;
++        params_[2] = min_conf_;
++    }
++
++    void reset() override {}
++
++    bool push_sample(uint64_t, const std::vector<float>& sample, Output& out) override {
++        if (sample.size() != 16) return false;
++
++        double s0 = 0.0;
++        double s1 = 0.0;
++        double se = 0.0;
++        double so = 0.0;
++        double e = 0.0;
++
++        for (int i = 0; i < 16; ++i) {
++            double v = (double)sample[(size_t)i];
++            double av = std::abs(v);
++            e += av;
++            if (i < 8) s0 += v;
++            else s1 += v;
++            if ((i & 1) == 0) se += v;
++            else so += v;
++        }
++
++        double denomx = std::abs(s0) + std::abs(s1) + 1e-9;
++        double denomy = std::abs(se) + std::abs(so) + 1e-9;
++
++        double dx = (s0 - s1) / denomx;
++        double dy = (se - so) / denomy;
++
++        double mean_abs = e / 16.0;
++        double conf = 1.0 - std::exp(-gain_ * mean_abs);
++        conf = std::clamp(conf, 0.0, 1.0);
++
++        out.x = scale_ * dx;
++        out.y = scale_ * dy;
++        out.z = 0.0;
++        out.confidence = conf;
++        out.q1 = dx;
++        out.q2 = dy;
++        out.err = 1.0 - conf;
++        out.quiet = conf < min_conf_;
++        out.valid = true;
++
++        return true;
++    }
++
++private:
++    std::vector<double> params_;
++
++    double scale_ = 0.03;
++    double gain_ = 5.0;
++    double min_conf_ = 0.15;
++};
++
++} // namespace hub::pt
++
++#endif
+diff --git a/core/include/hub/model/PositionTrackingRegistry.h b/core/include/hub/model/PositionTrackingRegistry.h
+index 77b70c5..04c7f86 100644
+--- a/core/include/hub/model/PositionTrackingRegistry.h
++++ b/core/include/hub/model/PositionTrackingRegistry.h
+@@ -1,113 +1,157 @@
+-#ifndef HUB_MODEL_POSITIONTRACKINGREGISTRY_H
+-#define HUB_MODEL_POSITIONTRACKINGREGISTRY_H
+-
+-#include <vector>
+-#include <string>
+-#include <memory>
+-#include <array>
+-#include <deque>
+-
+-namespace hub::pt {
+-
+-struct Output {
+-    bool valid = false;
+-    bool quiet = false;
+-    double x = 0.0;
+-    double y = 0.0;
+-    double z = 0.0;
+-    double q1 = 0.0;
+-    double q2 = 0.0;
+-    double err = 0.0;
+-};
+-
+-struct ParamDesc {
+-    std::string key;
+-    std::string label;
+-    double minv = 0.0;
+-    double maxv = 0.0;
+-    double defv = 0.0;
+-};
+-
+-struct AlgoInfo {
+-    std::string id;
+-    int N = 0;
+-    int M = 0;
+-    std::vector<ParamDesc> params;
+-    std::vector<double> defaults;
+-};
+-
+-class IAlgorithm {
+-public:
+-    virtual ~IAlgorithm() = default;
+-
+-    virtual const std::string& id() const = 0;
+-    virtual int N() const = 0;
+-    virtual int M() const = 0;
+-
+-    virtual std::vector<ParamDesc> params() const = 0;
+-    virtual std::vector<double> defaults() const = 0;
+-
+-    virtual void set_params(const std::vector<double>& values) = 0;
+-    virtual void reset() = 0;
+-
+-    // sample은 "필터/바이어스 적용된" 1프레임(N채널)
+-    virtual bool push_sample(const std::vector<float>& sample, Output& out) = 0;
+-};
+-
+-// -------------------------
+-// Sliding Window (N채널, M히스토리) 기반 알고리즘 베이스
+-// -------------------------
+-template<int N, int M>
+-class SlidingWindowAlgorithm : public IAlgorithm {
+-public:
+-    int N() const override { return N; }
+-    int M() const override { return M; }
+-
+-    bool push_sample(const std::vector<float>& sample, Output& out) override {
+-        if ((int)sample.size() != N) return false;
+-
+-        std::array<float, N> s{};
+-        for (int i = 0; i < N; ++i) s[i] = sample[i];
+-
+-        if ((int)hist_.size() == M) hist_.pop_front();
+-        hist_.push_back(s);
+-
+-        if ((int)hist_.size() < M) return false;
+-
+-        std::array<std::array<float, N>, M> H{};
+-        int k = 0;
+-        for (const auto& a : hist_) {
+-            H[k++] = a;
+-        }
+-        out = compute(H, params_);
+-        return out.valid;
+-    }
+-
+-    void set_params(const std::vector<double>& values) override {
+-        params_ = values;
+-    }
+-
+-    void reset() override {
+-        hist_.clear();
+-    }
+-
+-protected:
+-    virtual Output compute(const std::array<std::array<float, N>, M>& H,
+-                           const std::vector<double>& params) = 0;
+-
+-    std::vector<double> params_;
+-
+-private:
+-    std::deque<std::array<float, N>> hist_;
+-};
+-
+-// -------------------------
+-// Registry API
+-// -------------------------
+-std::vector<AlgoInfo> list_algorithms();
+-AlgoInfo get_algorithm_info(const std::string& id);
+-std::unique_ptr<IAlgorithm> create_algorithm(const std::string& id);
+-
+-} // namespace hub::pt
+-
+-#endif
++#ifndef HUB_MODEL_POSITIONTRACKINGREGISTRY_H
++#define HUB_MODEL_POSITIONTRACKINGREGISTRY_H
++
++#include <vector>
++#include <string>
++#include <memory>
++#include <array>
++#include <cstdint>
++#include <functional>
++
++namespace hub::pt {
++
++struct Output {
++    bool valid = false;
++    bool quiet = false;
++    double x = 0.0;
++    double y = 0.0;
++    double z = 0.0;
++    double confidence = 0.0;
++    double q1 = 0.0;
++    double q2 = 0.0;
++    double err = 0.0;
++};
++
++struct ParamDesc {
++    std::string key;
++    std::string label;
++    double minv = 0.0;
++    double maxv = 0.0;
++    double defv = 0.0;
++    double step = 0.0;
++    int decimals = -1;
++    bool scientific = false;
++};
++
++struct AlgoInfo {
++    std::string id;
++    int N = 0;
++    int M = 0;
++    std::vector<ParamDesc> params;
++    std::vector<double> defaults;
++};
++
++class IAlgorithm {
++public:
++    virtual ~IAlgorithm() = default;
++
++    virtual const std::string& id() const = 0;
++    virtual int N() const = 0;
++    virtual int M() const = 0;
++
++    virtual std::vector<ParamDesc> params() const = 0;
++    virtual std::vector<double> defaults() const = 0;
++
++    virtual void set_params(const std::vector<double>& values) = 0;
++    virtual void reset() = 0;
++
++    virtual bool push_sample(uint64_t t_ns, const std::vector<float>& sample, Output& out) = 0;
++};
++
++template<int NC, int MC>
++class SlidingWindowAlgorithm : public IAlgorithm {
++public:
++    static_assert(NC > 0, "NC must be > 0");
++    static_assert(MC > 0, "MC must be > 0");
++
++    int N() const override { return NC; }
++    int M() const override { return MC; }
++
++    struct WindowView {
++        const std::array<std::array<float, NC>, MC>* ring = nullptr;
++        int start = 0;
++
++        const std::array<float, NC>& at(int k) const {
++            return (*ring)[(start + k) % MC];
++        }
++
++        const float* data(int k) const {
++            return at(k).data();
++        }
++    };
++
++    bool push_sample(uint64_t t_ns, const std::vector<float>& sample, Output& out) override {
++        if ((int)sample.size() != NC) return false;
++
++        auto& dst = ring_[pos_];
++        for (int i = 0; i < NC; ++i) dst[i] = sample[(size_t)i];
++
++        pos_ = (pos_ + 1) % MC;
++        if (filled_ < MC) ++filled_;
++        if (filled_ < MC) return false;
++
++        WindowView w;
++        w.ring = &ring_;
++        w.start = pos_;
++
++        out = compute(w, params_, t_ns);
++        return out.valid;
++    }
++
++    void set_params(const std::vector<double>& values) override {
++        params_ = values;
++    }
++
++    void reset() override {
++        pos_ = 0;
++        filled_ = 0;
++    }
++
++protected:
++    virtual Output compute(const WindowView& w, const std::vector<double>& params, uint64_t t_ns) = 0;
++
++    std::vector<double> params_;
++
++private:
++    std::array<std::array<float, NC>, MC> ring_{};
++    int pos_ = 0;
++    int filled_ = 0;
++};
++
++struct Registration {
++    AlgoInfo info;
++    std::function<std::unique_ptr<IAlgorithm>()> factory;
++};
++
++void register_algorithm(Registration reg);
++
++template<class T>
++Registration make_registration() {
++    T tmp;
++    Registration r;
++    r.info.id = tmp.id();
++    r.info.N = tmp.N();
++    r.info.M = tmp.M();
++    r.info.params = tmp.params();
++    r.info.defaults = tmp.defaults();
++    r.factory = []() { return std::make_unique<T>(); };
++    return r;
++}
++
++#define HUB_PT_REGISTER_ALGORITHM(AlgoClass) \
++namespace { \
++struct AlgoClass##_AutoReg { \
++    AlgoClass##_AutoReg() { \
++        ::hub::pt::register_algorithm(::hub::pt::make_registration<AlgoClass>()); \
++    } \
++}; \
++static AlgoClass##_AutoReg g_##AlgoClass##_AutoReg; \
++}
++
++std::vector<AlgoInfo> list_algorithms();
++AlgoInfo get_algorithm_info(const std::string& id);
++std::unique_ptr<IAlgorithm> create_algorithm(const std::string& id);
++
++} // namespace hub::pt
++
++#endif
+diff --git a/core/src/model/ExampleAlgo_16x1.cpp b/core/src/model/ExampleAlgo_16x1.cpp
+new file mode 100644
+index 0000000..ea5cf53
+--- /dev/null
++++ b/core/src/model/ExampleAlgo_16x1.cpp
+@@ -0,0 +1,5 @@
++#include "hub/model/ExampleAlgo_16x1.h"
++
++namespace hub::pt {
++HUB_PT_REGISTER_ALGORITHM(ExampleAlgo_16x1)
++}
+diff --git a/core/src/model/PositionTrackingRegistry.cpp b/core/src/model/PositionTrackingRegistry.cpp
+index b4de9e5..261adb1 100644
+--- a/core/src/model/PositionTrackingRegistry.cpp
++++ b/core/src/model/PositionTrackingRegistry.cpp
+@@ -1,145 +1,189 @@
+-#include "hub/model/PositionTrackingRegistry.h"
+-#include "hub/model/BruteForce_16x2.h"
+-
+-#include <functional>
+-#include <vector>
+-#include <string>
+-#include <memory>
+-
+-namespace hub::pt {
+-
+-struct Entry {
+-    AlgoInfo info;
+-    std::function<std::unique_ptr<IAlgorithm>()> factory;
+-};
+-
+-static std::vector<Entry>& registry() {
+-    static std::vector<Entry> reg;
+-    return reg;
+-}
+-
+-static void ensure_registered() {
+-    auto& reg = registry();
+-    if (!reg.empty()) return;
+-
+-    class BruteForce_16x2 final : public IAlgorithm {
+-    public:
+-        BruteForce_16x2() {
+-            reset();
+-            set_params(defaults());
+-        }
+-
+-        const std::string& id() const override {
+-            static std::string s = "BruteForce_16x2";
+-            return s;
+-        }
+-        int N() const override { return 16; }
+-        int M() const override { return 2; }
+-
+-        std::vector<ParamDesc> params() const override {
+-            return {
+-                // ---- R,C: scientific notation in UI (handled in PositionTrackingWindow) ----
+-                {"rc_r",   "RC_R (Ohm)",        1e3,   1e14,  1e8},
+-                {"rc_c",   "RC_C (F)",          1e-18, 1e-3,  5e-10},
+-
+-                {"ema_a",  "EMA alpha",         0.0,   1.0,   0.2},
+-                {"quiet",  "Quiet err thresh",  0.0,   1e6,   0.3},
+-
+-                // ---- default grid: x/y = ±0.03, z fixed at 0.01, step = 0.001 ----
+-                {"xmin", "Grid x min", -1.0, 1.0, -0.03},
+-                {"xmax", "Grid x max", -1.0, 1.0,  0.03},
+-                {"ymin", "Grid y min", -1.0, 1.0, -0.03},
+-                {"ymax", "Grid y max", -1.0, 1.0,  0.03},
+-                {"zmin", "Grid z min", -1.0, 1.0,  0.01},
+-                {"zmax", "Grid z max", -1.0, 1.0,  0.01},
+-                {"step", "Grid step",  1e-6, 0.1,  0.001}
+-            };
+-        }
+-
+-        std::vector<double> defaults() const override {
+-            auto p = params();
+-            std::vector<double> d;
+-            d.reserve(p.size());
+-            for (auto& x : p) d.push_back(x.defv);
+-            return d;
+-        }
+-
+-        void set_params(const std::vector<double>& v) override {
+-            auto d = defaults();
+-            std::vector<double> a = v;
+-            if (a.size() < d.size()) a.resize(d.size(), 0.0);
+-
+-            double rc_r  = a[0];
+-            double rc_c  = a[1];
+-            double ema_a = a[2];
+-            double quiet = a[3];
+-
+-            double xmin = a[4], xmax = a[5];
+-            double ymin = a[6], ymax = a[7];
+-            double zmin = a[8], zmax = a[9];
+-            double step = a[10];
+-
+-            solver_.set_params(rc_r, rc_c, ema_a, quiet);
+-            solver_.set_grid(xmin, xmax, ymin, ymax, zmin, zmax, step);
+-
+-            params_ = a;
+-        }
+-
+-        void reset() override {
+-            solver_.reset();
+-        }
+-
+-        bool push_sample(const std::vector<float>& sample, Output& out) override {
+-            if (sample.size() != 16) return false;
+-            auto r = solver_.update(sample);
+-
+-            out.valid = r.has_pose;
+-            out.quiet = r.quiet;
+-            out.x = r.x; out.y = r.y; out.z = r.z;
+-            out.q1 = r.q1; out.q2 = r.q2;
+-            out.err = r.err;
+-            return out.valid;
+-        }
+-
+-    private:
+-        std::vector<double> params_;
+-        hub::BruteForce_16x2Solver solver_;
+-    };
+-
+-    Entry e;
+-    e.info.id = "BruteForce_16x2";
+-    e.info.N = 16;
+-    e.info.M = 2;
+-    {
+-        BruteForce_16x2 tmp;
+-        e.info.params = tmp.params();
+-        e.info.defaults = tmp.defaults();
+-    }
+-    e.factory = []() { return std::make_unique<BruteForce_16x2>(); };
+-    reg.push_back(std::move(e));
+-}
+-
+-std::vector<AlgoInfo> list_algorithms() {
+-    ensure_registered();
+-    std::vector<AlgoInfo> out;
+-    for (auto& e : registry()) out.push_back(e.info);
+-    return out;
+-}
+-
+-AlgoInfo get_algorithm_info(const std::string& id) {
+-    ensure_registered();
+-    for (auto& e : registry()) {
+-        if (e.info.id == id) return e.info;
+-    }
+-    return AlgoInfo{};
+-}
+-
+-std::unique_ptr<IAlgorithm> create_algorithm(const std::string& id) {
+-    ensure_registered();
+-    for (auto& e : registry()) {
+-        if (e.info.id == id) return e.factory();
+-    }
+-    return {};
+-}
+-
+-} // namespace hub::pt
++#include "hub/model/PositionTrackingRegistry.h"
++#include "hub/model/BruteForce_16x2.h"
++
++#include <functional>
++#include <vector>
++#include <string>
++#include <memory>
++#include <mutex>
++#include <algorithm>
++
++namespace hub::pt {
++
++struct Entry {
++    AlgoInfo info;
++    std::function<std::unique_ptr<IAlgorithm>()> factory;
++};
++
++static std::vector<Entry>& registry() {
++    static std::vector<Entry> reg;
++    return reg;
++}
++
++static std::mutex& registry_mutex() {
++    static std::mutex mu;
++    return mu;
++}
++
++void register_algorithm(Registration reg) {
++    if (reg.info.id.empty()) return;
++    if (!reg.factory) return;
++
++    std::lock_guard<std::mutex> lk(registry_mutex());
++    auto& r = registry();
++    for (const auto& e : r) {
++        if (e.info.id == reg.info.id) return;
++    }
++
++    Entry e;
++    e.info = std::move(reg.info);
++    e.factory = std::move(reg.factory);
++    r.push_back(std::move(e));
++}
++
++static void ensure_registered() {
++    static bool done = false;
++    if (done) return;
++    done = true;
++
++    class BruteForce_16x2 final : public IAlgorithm {
++    public:
++        BruteForce_16x2() {
++            reset();
++            set_params(defaults());
++        }
++
++        const std::string& id() const override {
++            static std::string s = "BruteForce_16x2";
++            return s;
++        }
++        int N() const override { return 16; }
++        int M() const override { return 2; }
++
++        std::vector<ParamDesc> params() const override {
++            return {
++                {"rc_r", "RC_R (Ohm)", 1e3, 1e14, 1e8, 0.0, 18, true},
++                {"rc_c", "RC_C (F)", 1e-18, 1e-3, 5e-10, 0.0, 18, true},
++                {"ema_a", "EMA alpha", 0.0, 1.0, 0.2, 0.01, 4, false},
++                {"quiet", "Quiet err thresh", 0.0, 1e6, 0.3, 0.05, 6, false},
++                {"xmin", "Grid x min", -1.0, 1.0, -0.03, 0.001, 5, false},
++                {"xmax", "Grid x max", -1.0, 1.0, 0.03, 0.001, 5, false},
++                {"ymin", "Grid y min", -1.0, 1.0, -0.03, 0.001, 5, false},
++                {"ymax", "Grid y max", -1.0, 1.0, 0.03, 0.001, 5, false},
++                {"zmin", "Grid z min", -1.0, 1.0, 0.01, 0.001, 5, false},
++                {"zmax", "Grid z max", -1.0, 1.0, 0.01, 0.001, 5, false},
++                {"step", "Grid step", 1e-6, 0.1, 0.001, 0.0001, 6, false}
++            };
++        }
++
++        std::vector<double> defaults() const override {
++            auto p = params();
++            std::vector<double> d;
++            d.reserve(p.size());
++            for (auto& x : p) d.push_back(x.defv);
++            return d;
++        }
++
++        void set_params(const std::vector<double>& v) override {
++            auto d = defaults();
++            std::vector<double> a = v;
++            if (a.size() < d.size()) a.resize(d.size(), 0.0);
++
++            double rc_r = a[0];
++            double rc_c = a[1];
++            double ema_a = a[2];
++            double quiet = a[3];
++
++            double xmin = a[4], xmax = a[5];
++            double ymin = a[6], ymax = a[7];
++            double zmin = a[8], zmax = a[9];
++            double step = a[10];
++
++            solver_.set_params(rc_r, rc_c, ema_a, quiet);
++            solver_.set_grid(xmin, xmax, ymin, ymax, zmin, zmax, step);
++
++            params_ = a;
++        }
++
++        void reset() override {
++            solver_.reset();
++        }
++
++        bool push_sample(uint64_t, const std::vector<float>& sample, Output& out) override {
++            if (sample.size() != 16) return false;
++            auto r = solver_.update(sample);
++
++            out.valid = r.has_pose;
++            out.quiet = r.quiet;
++            out.x = r.x;
++            out.y = r.y;
++            out.z = r.z;
++            out.q1 = r.q1;
++            out.q2 = r.q2;
++            out.err = r.err;
++
++            if (out.valid) {
++                double e = out.err;
++                if (e < 0.0) e = 0.0;
++                out.confidence = 1.0 / (1.0 + e);
++            } else {
++                out.confidence = 0.0;
++            }
++
++            return out.valid;
++        }
++
++    private:
++        std::vector<double> params_;
++        hub::BruteForce_16x2Solver solver_;
++    };
++
++    Registration r;
++    r.info.id = "BruteForce_16x2";
++    r.info.N = 16;
++    r.info.M = 2;
++    {
++        BruteForce_16x2 tmp;
++        r.info.params = tmp.params();
++        r.info.defaults = tmp.defaults();
++    }
++    r.factory = []() { return std::make_unique<BruteForce_16x2>(); };
++    register_algorithm(std::move(r));
++}
++
++std::vector<AlgoInfo> list_algorithms() {
++    ensure_registered();
++    std::lock_guard<std::mutex> lk(registry_mutex());
++
++    std::vector<AlgoInfo> out;
++    out.reserve(registry().size());
++    for (auto& e : registry()) out.push_back(e.info);
++
++    std::sort(out.begin(), out.end(), [](const AlgoInfo& a, const AlgoInfo& b) {
++        return a.id < b.id;
++    });
++
++    return out;
++}
++
++AlgoInfo get_algorithm_info(const std::string& id) {
++    ensure_registered();
++    std::lock_guard<std::mutex> lk(registry_mutex());
++
++    for (auto& e : registry()) {
++        if (e.info.id == id) return e.info;
++    }
++    return AlgoInfo{};
++}
++
++std::unique_ptr<IAlgorithm> create_algorithm(const std::string& id) {
++    ensure_registered();
++    std::lock_guard<std::mutex> lk(registry_mutex());
++
++    for (auto& e : registry()) {
++        if (e.info.id == id) return e.factory();
++    }
++    return {};
++}
++
++} // namespace hub::pt
