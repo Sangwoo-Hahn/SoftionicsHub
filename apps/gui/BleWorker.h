@@ -7,6 +7,9 @@
 #include <QMutex>
 #include <QMutexLocker>
 
+#include <QtSerialPort/QSerialPort>
+#include <QtSerialPort/QSerialPortInfo>
+
 #include <atomic>
 #include <fstream>
 #include <memory>
@@ -15,6 +18,7 @@
 #include <optional>
 #include <deque>
 #include <cstdint>
+#include <string_view>
 
 #include <simpleble/SimpleBLE.h>
 
@@ -22,10 +26,16 @@
 #include "hub/Parser.h"
 #include "hub/Pipeline.h"
 
+enum class DeviceKind : int {
+    Ble = 0,
+    Serial = 1,
+};
+
 struct DeviceInfo {
+    DeviceKind kind = DeviceKind::Ble;
     QString name;
     QString address;
-    int rssi = 0;
+    int rssi = 0; // BLE only
 };
 
 class BleWorker : public QObject {
@@ -66,7 +76,16 @@ private:
     void notifyStart();
     void notifyStop();
 
+    void processChunk(std::string_view chunk);
+
+    void serialConnect(const QString& portName);
+    void serialDisconnect();
+
     void resetStreamStatsLocked();
+
+private slots:
+    void onSerialReadyRead();
+    void onSerialError(QSerialPort::SerialPortError error);
 
 private:
     std::atomic<bool> scanning_{false};
@@ -80,9 +99,24 @@ private:
     std::vector<SimpleBLE::Peripheral> peripherals_;
     QMutex periphMu_;
 
+    QVector<DeviceInfo> lastScan_;
+    QMutex scanMu_;
+
     std::optional<SimpleBLE::Peripheral> active_;
     std::optional<SimpleBLE::BluetoothUUID> svc_;
     std::optional<SimpleBLE::BluetoothUUID> chr_;
+
+    std::atomic<int> linkType_{0}; // 0 none, 1 BLE, 2 Serial
+
+    QSerialPort* serial_ = nullptr;
+    QString serialPort_;
+
+
+    // Serial streams can start mid-line when the port is opened.
+    // We sync to the next newline before feeding data to the CSV framer/parser.
+    std::atomic<bool> serialSynced_{false};
+
+    std::atomic<uint64_t> stream_t0_ns_{0};
 
     hub::LineFramer framer_;
     hub::CsvFloatParser parser_;

@@ -1,0 +1,71 @@
+diff --git a/apps/gui/BleWorker.cpp b/apps/gui/BleWorker.cpp
+index 8f95526..46dd7d8 100644
+--- a/apps/gui/BleWorker.cpp
++++ b/apps/gui/BleWorker.cpp
+@@ -175,6 +175,7 @@ void BleWorker::serialConnect(const QString& portName) {
+         return;
+     }
+ 
++    serialSynced_.store(false);
+     framer_.clear();
+     stream_t0_ns_.store(now_ns());
+ 
+@@ -203,6 +204,7 @@ void BleWorker::serialDisconnect() {
+         if (serial_->isOpen()) serial_->close();
+     }
+     serialPort_.clear();
++    serialSynced_.store(false);
+ }
+ 
+ void BleWorker::connectToIndex(int index) {
+@@ -394,6 +396,34 @@ void BleWorker::onSerialReadyRead() {
+     QByteArray data = serial_->readAll();
+     if (data.isEmpty()) return;
+ 
++    // Serial ports often start streaming mid-line when you open the port.
++    // If we feed that first partial line into the CSV parser, it can lock
++    // the channel count incorrectly (e.g., 10 instead of 16) and the plot
++    // may stay empty afterwards. To avoid this, discard everything until
++    // the next newline once per connect.
++    if (!serialSynced_.load()) {
++        int i_n = data.indexOf('\n');
++        int i_r = data.indexOf('\r');
++
++        int i = -1;
++        if (i_n >= 0 && i_r >= 0) i = (i_n < i_r) ? i_n : i_r;
++        else if (i_n >= 0) i = i_n;
++        else i = i_r;
++
++        if (i < 0) {
++            // Still syncing: drop this chunk.
++            return;
++        }
++
++        int adv = 1;
++        if (data.at(i) == '\r' && (i + 1) < data.size() && data.at(i + 1) == '\n') adv = 2;
++
++        data = data.mid(i + adv);
++        serialSynced_.store(true);
++
++        if (data.isEmpty()) return;
++    }
++
+     std::string chunk(data.constData(), (size_t)data.size());
+     processChunk(std::string_view(chunk));
+ }
+diff --git a/apps/gui/BleWorker.h b/apps/gui/BleWorker.h
+index 7c088fd..b86860d 100644
+--- a/apps/gui/BleWorker.h
++++ b/apps/gui/BleWorker.h
+@@ -111,6 +111,11 @@ private:
+     QSerialPort* serial_ = nullptr;
+     QString serialPort_;
+ 
++
++    // Serial streams can start mid-line when the port is opened.
++    // We sync to the next newline before feeding data to the CSV framer/parser.
++    std::atomic<bool> serialSynced_{false};
++
+     std::atomic<uint64_t> stream_t0_ns_{0};
+ 
+     hub::LineFramer framer_;
