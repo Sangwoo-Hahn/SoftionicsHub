@@ -176,6 +176,32 @@ void PositionTrackingWindow::buildUi() {
     auto* gTools = new QGroupBox("Tools", ctrlW);
     auto* tL = new QVBoxLayout(gTools);
 
+    auto* axisForm = new QFormLayout();
+    axisForm->setHorizontalSpacing(12);
+    axisForm->setVerticalSpacing(10);
+
+    spXRange_ = new FormatDoubleSpinBox(gTools);
+    spXRange_->setMode(FormatDoubleSpinBox::Mode::Fixed);
+    spXRange_->setFixedDecimals(6);
+    spXRange_->setRange(1e-6, 100.0);
+    spXRange_->setSingleStep(0.001);
+    spXRange_->setValue(0.09);
+    spXRange_->setMinimumWidth(260);
+    spXRange_->setMinimumHeight(28);
+
+    spYRange_ = new FormatDoubleSpinBox(gTools);
+    spYRange_->setMode(FormatDoubleSpinBox::Mode::Fixed);
+    spYRange_->setFixedDecimals(6);
+    spYRange_->setRange(1e-6, 100.0);
+    spYRange_->setSingleStep(0.001);
+    spYRange_->setValue(0.09);
+    spYRange_->setMinimumWidth(260);
+    spYRange_->setMinimumHeight(28);
+
+    axisForm->addRow("X range (±)", spXRange_);
+    axisForm->addRow("Y range (±)", spYRange_);
+    tL->addLayout(axisForm);
+
     spPathLen_ = new QSpinBox(gTools);
     spPathLen_->setRange(1, 5000);
     spPathLen_->setValue(40);
@@ -195,6 +221,8 @@ void PositionTrackingWindow::buildUi() {
     connect(btnApply_, &QPushButton::clicked, this, &PositionTrackingWindow::onApplyParams);
     connect(btnReset_, &QPushButton::clicked, this, &PositionTrackingWindow::onResetAlgo);
     connect(btnClear_, &QPushButton::clicked, this, &PositionTrackingWindow::onClearPath);
+    connect(spXRange_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) { updateAxesAndDraw(); });
+    connect(spYRange_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, [this](double) { updateAxesAndDraw(); });
 
     split->addWidget(ctrlW);
 
@@ -233,7 +261,32 @@ void PositionTrackingWindow::onAlgoChanged(int idx) {
         for (int i = 0; i < 16; ++i) sensors_->append(sens[i].x, sens[i].y);
     }
 
+    setDefaultViewRange();
+
     updateAxesAndDraw();
+}
+
+void PositionTrackingWindow::setDefaultViewRange() {
+    double xHalf = 0.03;
+    double yHalf = 0.03;
+
+    if (curInfo_.N == 16) {
+        auto sens = hub::BruteForce_16x2Solver::sensor_positions();
+        double mx = 0.0;
+        double my = 0.0;
+        for (int i = 0; i < 16; ++i) {
+            mx = std::max(mx, std::abs((double)sens[i].x));
+            my = std::max(my, std::abs((double)sens[i].y));
+        }
+        xHalf = std::max(xHalf, mx);
+        yHalf = std::max(yHalf, my);
+    }
+
+    xHalf = std::max(1e-6, xHalf) * 1.15 * 3.0;
+    yHalf = std::max(1e-6, yHalf) * 1.15 * 3.0;
+
+    if (spXRange_) spXRange_->setValue(xHalf);
+    if (spYRange_) spYRange_->setValue(yHalf);
 }
 
 void PositionTrackingWindow::rebuildParamUi(const hub::pt::AlgoInfo& info) {
@@ -402,4 +455,16 @@ void PositionTrackingWindow::updateAxesAndDraw() {
 
     axX_->setRange(cx - 0.5 * xSpan, cx + 0.5 * xSpan);
     axY_->setRange(cy - 0.5 * ySpan, cy + 0.5 * ySpan);
+
+    double xHalf = 0.03;
+    double yHalf = 0.03;
+
+    if (spXRange_) xHalf = spXRange_->value();
+    if (spYRange_) yHalf = spYRange_->value();
+
+    if (!(xHalf > 0.0)) xHalf = 1e-6;
+    if (!(yHalf > 0.0)) yHalf = 1e-6;
+
+    axX_->setRange(-xHalf, xHalf);
+    axY_->setRange(-yHalf, yHalf);
 }
