@@ -24,6 +24,8 @@
 
 #include "hub/model/PositionTrackingRegistry.h"
 
+class FormatDoubleSpinBox;
+
 class BleWorker;
 class PositionTrackingEngine;
 
@@ -53,6 +55,7 @@ private:
     void rebuildParamUi(const hub::pt::AlgoInfo& info);
     QVector<double> collectParams() const;
     void updateAxesAndDraw();
+    void setDefaultViewRange();
 
 private:
     struct OutPkt {
@@ -81,6 +84,8 @@ private:
     QPushButton* btnReset_ = nullptr;
     QPushButton* btnClear_ = nullptr;
     QSpinBox* spPathLen_ = nullptr;
+    FormatDoubleSpinBox* spXRange_ = nullptr;
+    FormatDoubleSpinBox* spYRange_ = nullptr;
 
     QChartView* view_ = nullptr;
     QChart* chart_ = nullptr;

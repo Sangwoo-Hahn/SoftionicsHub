@@ -1,0 +1,189 @@
+diff --git a/core/src/Framer.cpp b/core/src/Framer.cpp
+index 54565f2..6e270a4 100644
+--- a/core/src/Framer.cpp
++++ b/core/src/Framer.cpp
+@@ -1,32 +1,38 @@
+-#include "hub/Framer.h"
+-
+-namespace hub {
+-
+-std::vector<std::string> LineFramer::push(std::string_view chunk) {
+-    buf_.append(chunk.data(), chunk.size());
+-
+-    std::vector<std::string> out;
+-    size_t start = 0;
+-
+-    for (;;) {
+-        size_t nl = buf_.find('\n', start);
+-        if (nl == std::string::npos) break;
+-
+-        size_t end = nl;
+-        if (end > 0 && buf_[end - 1] == '\r') end--;
+-
+-        if (end > start) out.emplace_back(buf_.substr(start, end - start));
+-        else out.emplace_back(std::string());
+-
+-        start = nl + 1;
+-    }
+-
+-    if (start > 0) buf_.erase(0, start);
+-    return out;
+-}
+-
+-void LineFramer::clear() {
+-    buf_.clear();
+-}
+-
+-}
++#include "hub/Framer.h"
++
++namespace hub {
++
++std::vector<std::string> LineFramer::push(std::string_view chunk) {
++    buf_.append(chunk.data(), chunk.size());
++
++    std::vector<std::string> out;
++    size_t start = 0;
++
++    // Accept any of: "\n", "\r", "\r\n" as line terminators.
++    // This makes Serial streams robust: some devices emit CR-only.
++    for (;;) {
++        size_t nl = buf_.find_first_of("\r\n", start);
++        if (nl == std::string::npos) break;
++
++        size_t end = nl;
++
++        if (end > start) out.emplace_back(buf_.substr(start, end - start));
++        else out.emplace_back(std::string());
++
++        // Consume delimiter (\r\n treated as a single newline)
++        size_t adv = 1;
++        if (buf_[nl] == '\r' && (nl + 1) < buf_.size() && buf_[nl + 1] == '\n') {
++            adv = 2;
++        }
++        start = nl + adv;
++    }
++
++    if (start > 0) buf_.erase(0, start);
++    return out;
++}
++
++void LineFramer::clear() {
++    buf_.clear();
++}
++
++}
+diff --git a/core/src/Parser.cpp b/core/src/Parser.cpp
+index 7a30da0..71a5b53 100644
+--- a/core/src/Parser.cpp
++++ b/core/src/Parser.cpp
+@@ -1,43 +1,66 @@
+-#include "hub/Parser.h"
+-#include <cstdlib>
+-
+-namespace hub {
+-
+-static inline void skip_ws(const char*& p, const char* e) {
+-    while (p < e && (*p == ' ' || *p == '\t')) ++p;
+-}
+-
+-std::optional<std::vector<float>> CsvFloatParser::parse_line(std::string_view line) const {
+-    const char* p = line.data();
+-    const char* e = p + line.size();
+-
+-    std::vector<float> vals;
+-    vals.reserve(64);
+-
+-    for (;;) {
+-        skip_ws(p, e);
+-        if (p >= e) break;
+-
+-        char* endp = nullptr;
+-        float v = std::strtof(p, &endp);
+-        if (endp == p) return std::nullopt;
+-
+-        vals.push_back(v);
+-        p = endp;
+-
+-        skip_ws(p, e);
+-        if (p >= e) break;
+-
+-        if (*p == ',') {
+-            ++p;
+-            continue;
+-        }
+-
+-        return std::nullopt;
+-    }
+-
+-    if (vals.empty()) return std::nullopt;
+-    return vals;
+-}
+-
+-}
++#include "hub/Parser.h"
++#include <cstdlib>
++
++namespace hub {
++
++static inline void skip_ws(const char*& p, const char* e) {
++    while (p < e && (*p == ' ' || *p == '\t')) ++p;
++}
++
++static inline bool is_number_start(char c) {
++    return (c >= '0' && c <= '9') || c == '+' || c == '-' || c == '.';
++}
++
++std::optional<std::vector<float>> CsvFloatParser::parse_line(std::string_view line) const {
++    const char* p = line.data();
++    const char* e = p + line.size();
++
++    std::vector<float> vals;
++    vals.reserve(64);
++
++    for (;;) {
++        // Allow leading separators (",,,,1,2"), and allow whitespace-separated formats.
++        // This is especially common on Serial streams (e.g. Arduino Serial Plotter uses spaces/tabs).
++        for (;;) {
++            skip_ws(p, e);
++            if (p >= e) break;
++            if (*p == ',' || *p == ';' || *p == '|') {
++                ++p;
++                continue;
++            }
++            break;
++        }
++        if (p >= e) break;
++
++        char* endp = nullptr;
++        float v = std::strtof(p, &endp);
++        if (endp == p) return std::nullopt;
++
++        vals.push_back(v);
++        p = endp;
++
++        // Skip whitespace after a value.
++        skip_ws(p, e);
++        if (p >= e) break;
++
++        // Common explicit separators.
++        if (*p == ',' || *p == ';' || *p == '|') {
++            ++p;
++            continue;
++        }
++
++        // Whitespace-separated format: if the next token looks like a number, keep parsing.
++        // (We already consumed whitespace above.)
++        if (is_number_start(*p)) {
++            continue;
++        }
++
++        // Otherwise, unknown / stray characters.
++        return std::nullopt;
++    }
++
++    if (vals.empty()) return std::nullopt;
++    return vals;
++}
++
++}

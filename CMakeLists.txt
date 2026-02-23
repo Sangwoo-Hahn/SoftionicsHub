@@ -11,7 +11,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets Charts)
+find_package(Qt6 REQUIRED COMPONENTS Widgets Charts SerialPort)
 
 add_library(hub_core
   core/src/Framer.cpp
@@ -62,4 +62,4 @@ target_sources(softionics_hub_gui PRIVATE $<TARGET_OBJECTS:hub_models>)
 
 set_source_files_properties(apps/gui/BleWorker.cpp PROPERTIES SKIP_AUTOMOC ON)
 
-target_link_libraries(softionics_hub_gui PRIVATE Qt6::Widgets Qt6::Charts hub_core)
+target_link_libraries(softionics_hub_gui PRIVATE Qt6::Widgets Qt6::Charts Qt6::SerialPort hub_core)

@@ -113,7 +113,7 @@ void MainWindow::buildUi() {
     devPanel->setMinimumWidth(280);
     auto* devL = new QVBoxLayout(devPanel);
 
-    auto* devTitle = new QLabel("Devices (click to connect)", devPanel);
+    auto* devTitle = new QLabel("Devices (BLE / COM, click to connect)", devPanel);
     QFont titleFont = devTitle->font();
     titleFont.setBold(true);
     devTitle->setFont(titleFont);
@@ -492,13 +492,22 @@ void MainWindow::onScanUpdated(QVector<DeviceInfo> devices) {
 
     list_->clear();
 
+    auto isSerialId = [](const QString& s) {
+        return s.startsWith("COM", Qt::CaseInsensitive) || s.startsWith("/dev/");
+    };
+
     bool foundConnected = false;
     bool foundConnecting = false;
 
     for (int i = 0; i < devices_.size(); ++i) {
         const auto& d = devices_[i];
 
-        QString text = QString("%1  (%2)  rssi=%3").arg(d.name).arg(d.address).arg(d.rssi);
+        QString text;
+        if (d.kind == DeviceKind::Ble) {
+            text = QString("%1  (%2)  rssi=%3").arg(d.name).arg(d.address).arg(d.rssi);
+        } else {
+            text = QString("[COM] %1").arg(d.name);
+        }
         auto* item = new QListWidgetItem(text);
         item->setData(ROLE_ADDR, d.address);
         item->setData(ROLE_NAME, d.name);
@@ -511,7 +520,9 @@ void MainWindow::onScanUpdated(QVector<DeviceInfo> devices) {
 
     if (!connectedAddr_.isEmpty() && !foundConnected) {
         QString nm = connectedName_.isEmpty() ? "CONNECTED" : connectedName_;
-        QString text = QString("%1  (%2)  rssi=--").arg(nm).arg(connectedAddr_);
+        QString text;
+        if (isSerialId(connectedAddr_)) text = QString("[COM] %1  (%2)").arg(nm).arg(connectedAddr_);
+        else text = QString("%1  (%2)  rssi=--").arg(nm).arg(connectedAddr_);
         auto* item = new QListWidgetItem(text);
         item->setData(ROLE_ADDR, connectedAddr_);
         item->setData(ROLE_NAME, nm);
@@ -521,7 +532,9 @@ void MainWindow::onScanUpdated(QVector<DeviceInfo> devices) {
 
     if (connecting_ && !connectingAddr_.isEmpty() && !foundConnecting) {
         QString nm = connectingName_.isEmpty() ? "CONNECTING" : connectingName_;
-        QString text = QString("%1  (%2)  rssi=--").arg(nm).arg(connectingAddr_);
+        QString text;
+        if (isSerialId(connectingAddr_)) text = QString("[COM] %1  (%2)").arg(nm).arg(connectingAddr_);
+        else text = QString("%1  (%2)  rssi=--").arg(nm).arg(connectingAddr_);
         auto* item = new QListWidgetItem(text);
         item->setData(ROLE_ADDR, connectingAddr_);
         item->setData(ROLE_NAME, nm);
