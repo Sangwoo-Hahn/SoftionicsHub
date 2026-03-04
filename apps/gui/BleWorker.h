@@ -49,6 +49,10 @@ public slots:
     void connectToIndex(int index);
     void disconnectDevice();
 
+    // Serial input parsing mode.
+    // 0 Auto, 1 Decimal, 2 Hex, 3 Binary, 4 Int16  (see hub::InputFormat)
+    void setInputFormat(int fmt);
+
     void setPipelineConfig(hub::PipelineConfig cfg);
     void startBiasCapture(int frames);
 
@@ -120,6 +124,8 @@ private:
 
     hub::LineFramer framer_;
     hub::CsvFloatParser parser_;
+
+    std::atomic<int> inputFmt_{0}; // hub::InputFormat
 
     hub::Pipeline pipe_;
     hub::PipelineConfig cfg_;

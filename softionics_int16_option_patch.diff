@@ -1,0 +1,212 @@
+diff --git a/apps/gui/BleWorker.cpp b/apps/gui/BleWorker.cpp
+index 737c895..801d1b6 100644
+--- a/apps/gui/BleWorker.cpp
++++ b/apps/gui/BleWorker.cpp
+@@ -62,8 +62,8 @@ void BleWorker::startAuto(QString prefix) {
+ }
+ 
+ void BleWorker::setInputFormat(int fmt) {
+-    // Valid values: 0..3 (hub::InputFormat)
+-    if (fmt < 0 || fmt > 3) fmt = 0;
++    // Valid values: 0..4 (hub::InputFormat)
++    if (fmt < 0 || fmt > 4) fmt = 0;
+     inputFmt_.store(fmt);
+ 
+     // Changing the parsing format can change the channel count and should
+@@ -83,6 +83,7 @@ void BleWorker::setInputFormat(int fmt) {
+     if (fmt == 1) name = "Decimal";
+     else if (fmt == 2) name = "Hex";
+     else if (fmt == 3) name = "Binary";
++    else if (fmt == 4) name = "Int16";
+     emit statusText(QString("Input format: %1").arg(name));
+ }
+ 
+diff --git a/apps/gui/BleWorker.h b/apps/gui/BleWorker.h
+index 0545fac..1e220fa 100644
+--- a/apps/gui/BleWorker.h
++++ b/apps/gui/BleWorker.h
+@@ -50,7 +50,7 @@ public slots:
+     void disconnectDevice();
+ 
+     // Serial input parsing mode.
+-    // 0 Auto, 1 Decimal, 2 Hex, 3 Binary  (see hub::InputFormat)
++    // 0 Auto, 1 Decimal, 2 Hex, 3 Binary, 4 Int16  (see hub::InputFormat)
+     void setInputFormat(int fmt);
+ 
+     void setPipelineConfig(hub::PipelineConfig cfg);
+diff --git a/apps/gui/MainWindow.cpp b/apps/gui/MainWindow.cpp
+index 0fb5df9..3238744 100644
+--- a/apps/gui/MainWindow.cpp
++++ b/apps/gui/MainWindow.cpp
+@@ -233,7 +233,7 @@ void MainWindow::buildUi() {
+         centerLine_->setPen(pen);
+     }
+ 
+-    // --- Serial input format toggle (AUTO / DEC / HEX / BIN) ---
++    // --- Serial input format toggle (AUTO / DEC / HEX / BIN / I16) ---
+     // 센서가 HEX/BIN 등으로 들어오는 경우를 위해, 그래프 위에 작은 토글을 둔다.
+     auto* fmtRow = new QWidget(chartPanel);
+     fmtRow->setMaximumHeight(28);
+@@ -260,6 +260,7 @@ void MainWindow::buildUi() {
+     makeBtn("DEC", 1);
+     makeBtn("HEX", 2);
+     makeBtn("BIN", 3);
++    makeBtn("I16", 4);
+     bAuto->setChecked(true);
+ 
+     fmtL->addStretch(1);
+diff --git a/core/include/hub/Parser.h b/core/include/hub/Parser.h
+index 9f0abf3..9d5e1af 100644
+--- a/core/include/hub/Parser.h
++++ b/core/include/hub/Parser.h
+@@ -11,11 +11,15 @@ namespace hub {
+ // - Decimal: CSV / whitespace-separated decimal floats or ints.
+ // - Hex: tokens interpreted as hexadecimal integers (e.g. "0x1A", "1A").
+ // - Binary: tokens interpreted as binary integers (e.g. "0b1010", "1010").
++// - Int16: tokens parsed as integers (Auto base detect) and converted to signed int16.
+ enum class InputFormat : int {
+     Auto    = 0,
+     Decimal = 1,
+     Hex     = 2,
+     Binary  = 3,
++    // Parse tokens as integers (Auto base detection) and reinterpret as signed int16
++    // using two's-complement: range [-32768, 32767].
++    Int16   = 4,
+ };
+ 
+ class CsvFloatParser {
+diff --git a/core/src/Parser.cpp b/core/src/Parser.cpp
+index 38e14bf..623d6e2 100644
+--- a/core/src/Parser.cpp
++++ b/core/src/Parser.cpp
+@@ -1,5 +1,7 @@
+ #include "hub/Parser.h"
+ #include <cctype>
++#include <cerrno>
++#include <cstdint>
+ #include <cstdlib>
+ #include <string>
+ 
+@@ -176,6 +178,109 @@ static std::optional<std::vector<float>> parse_binary_impl(std::string_view line
+     return vals;
+ }
+ 
++static inline bool token_has_hex_letter(std::string_view tok) {
++    for (char c : tok) {
++        if ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) return true;
++    }
++    return false;
++}
++
++static inline bool token_is_binary_like(std::string_view tok) {
++    // Length threshold to avoid mis-detecting normal decimals like "10,11".
++    // Typical binary dumps are 8/16/32 bits.
++    if (tok.size() < 8) return false;
++    for (char c : tok) {
++        if (!is_bin_digit(c)) return false;
++    }
++    return true;
++}
++
++static inline int32_t u16_to_i16(uint16_t w) {
++    // Avoid implementation-defined casts from unsigned->signed by doing explicit mapping.
++    return (w & 0x8000u) ? (int32_t)w - 0x10000 : (int32_t)w;
++}
++
++static std::optional<std::vector<float>> parse_int16_impl(std::string_view line) {
++    std::vector<std::string_view> toks;
++    toks.reserve(64);
++    split_tokens(line, toks);
++    if (toks.empty()) return std::nullopt;
++
++    std::vector<float> vals;
++    vals.reserve(toks.size());
++
++    for (auto tsv : toks) {
++        if (tsv.empty()) continue;
++
++        // Parse sign, then detect base (10/16/2) similarly to Auto.
++        bool neg = false;
++        std::string_view t = tsv;
++
++        if (!t.empty() && (t.front() == '+' || t.front() == '-')) {
++            neg = (t.front() == '-');
++            t.remove_prefix(1);
++            if (t.empty()) return std::nullopt;
++        }
++
++        int base = 10;
++        std::string_view body = t;
++
++        if (t.size() >= 2 && t[0] == '0' && (t[1] == 'x' || t[1] == 'X')) {
++            base = 16;
++            body = t.substr(2);
++        } else if (t.size() >= 2 && t[0] == '0' && (t[1] == 'b' || t[1] == 'B')) {
++            base = 2;
++            body = t.substr(2);
++        } else if (token_has_hex_letter(t)) {
++            base = 16;
++            body = t;
++        } else if (token_is_binary_like(t)) {
++            base = 2;
++            body = t;
++        } else {
++            base = 10;
++            body = t;
++        }
++
++        if (body.empty()) return std::nullopt;
++
++        uint16_t w = 0;
++
++        if (base == 10) {
++            // Decimal signed integer.
++            std::string tok(tsv);
++            char* endp = nullptr;
++            errno = 0;
++            long long v = std::strtoll(tok.c_str(), &endp, 10);
++            if (!endp || endp == tok.c_str() || *endp != '\0') return std::nullopt;
++            if (errno == ERANGE) return std::nullopt;
++
++            uint64_t uv = (uint64_t)(int64_t)v; // defined: modulo 2^64 if v<0
++            w = (uint16_t)(uv & 0xFFFFu);
++        } else if (base == 16 || base == 2) {
++            // Hex/Binary unsigned integer, with optional leading sign handled above.
++            std::string tok(body);
++            char* endp = nullptr;
++            errno = 0;
++            unsigned long long u = std::strtoull(tok.c_str(), &endp, base);
++            if (!endp || endp == tok.c_str() || *endp != '\0') return std::nullopt;
++            if (errno == ERANGE) return std::nullopt;
++
++            uint64_t uv = (uint64_t)u;
++            if (neg) uv = 0ULL - uv; // defined modulo arithmetic
++            w = (uint16_t)(uv & 0xFFFFu);
++        } else {
++            return std::nullopt;
++        }
++
++        int32_t s = u16_to_i16(w);
++        vals.push_back((float)s);
++    }
++
++    if (vals.empty()) return std::nullopt;
++    return vals;
++}
++
+ static bool looks_like_hex(std::string_view line) {
+     // Heuristics:
+     // - Any 0x/0X prefix
+@@ -274,6 +379,12 @@ std::optional<std::vector<float>> CsvFloatParser::parse_line(std::string_view li
+         return std::nullopt;
+     }
+ 
++    if (fmt == InputFormat::Int16) {
++        if (auto v = parse_int16_impl(line)) return v;
++        return std::nullopt;
++    }
++
++
+     // Auto
+     // If it strongly looks like a bit-field, prefer decoding as binary.
+     if (looks_like_binary(line)) {

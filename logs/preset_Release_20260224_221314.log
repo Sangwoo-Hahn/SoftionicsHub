@@ -1,0 +1,84 @@
+CFG=Release
+PRESET=win-local-qt
+
+--------------------------------------------------
+Running: git submodule update --init --recursive
+--------------------------------------------------
+Running: cmake --preset "win-local-qt" --fresh
+-- Selecting Windows SDK version 10.0.26100.0 to target Windows 10.0.26200.
+-- The C compiler identification is MSVC 19.44.35222.0
+-- The CXX compiler identification is MSVC 19.44.35222.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.44.35207/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test COMPILER_HAS_DEPRECATED_ATTR
+-- Performing Test COMPILER_HAS_DEPRECATED_ATTR - Failed
+-- Performing Test COMPILER_HAS_DEPRECATED
+-- Performing Test COMPILER_HAS_DEPRECATED - Success
+-- Windows Host Detected
+-- Applying definition: SIMPLEBLE_LOG_LEVEL=SIMPLEBLE_LOG_LEVEL_INFO
+-- Applying definition: SIMPLEBLE_VERSION="0.11.0"
+-- Applying definition: FMT_HEADER_ONLY
+-- Applying definition: /D_WIN32_WINNT=0x0A00
+-- Applying definition: /D_USE_MATH_DEFINES
+-- Applying private compile option: /utf-8
+-- Applying private compile option: /Gd
+-- Applying private compile option: /EHsc
+-- Applying private compile option: /WX
+-- Applying private compile option: /W1
+-- Applying definition: SIMPLEBLE_LOG_LEVEL=SIMPLEBLE_LOG_LEVEL_INFO
+-- Applying definition: SIMPLEBLE_VERSION="0.11.0"
+-- Applying definition: FMT_HEADER_ONLY
+-- Applying definition: /D_WIN32_WINNT=0x0A00
+-- Applying definition: /D_USE_MATH_DEFINES
+-- Applying private compile option: /utf-8
+-- Applying private compile option: /Gd
+-- Applying private compile option: /EHsc
+-- Applying private compile option: /WX
+-- Applying private compile option: /W1
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - not found
+-- Found Threads: TRUE
+-- Performing Test HAVE_STDATOMIC
+-- Performing Test HAVE_STDATOMIC - Success
+-- Found WrapAtomic: TRUE
+-- Could NOT find WrapVulkanHeaders (missing: Vulkan_INCLUDE_DIR) 
+-- Could NOT find WrapVulkanHeaders (missing: Vulkan_INCLUDE_DIR) 
+-- Configuring done (4.6s)
+-- Generating done (0.2s)
+CMake Warning:
+  Manually-specified variables were not used by the project:
+
+    CMAKE_BUILD_TYPE
+
+
+-- Build files have been written to: C:/Users/Kylehahn/OneDrive/_softionics/_Programming/2026/SoftionicsHub/build_gui
+--------------------------------------------------
+Running: cmake --build --preset "win-local-qt"
+msbuild 버전 17.14.40+3e7442088(.NET Framework용)
+
+  Checking File Globs
+  hub_models.vcxproj -> C:\Users\Kylehahn\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\hub_models.dir\Release\hub_models.lib
+  simpleble.vcxproj -> C:\Users\Kylehahn\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\simpleble\Release\simpleble.lib
+  Parser.cpp
+  hub_core.vcxproj -> C:\Users\Kylehahn\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\Release\hub_core.lib
+C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Microsoft\VC\v170\Microsoft.CppBuild.targets(538,5): warning MSB8028: 중간 디렉터리(softionics_hub_gui.dir\Release\)에 다른 프로젝트(softionics_hub_gui.vcxproj)에서 공유하는 파일이 포함되어 있습니다.  이로 인해 잘못된 정리 및 다시 빌드 동작이 수행될 수 있습니다. [C:\Users\Kylehahn\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\softionics_hub_gui.vcxproj]
+  Automatic MOC and UIC for target softionics_hub_gui
+  BleWorker.cpp
+  MainWindow.cpp
+  PositionTrackingWindow.cpp
+  main.cpp
+  mocs_compilation_Release.cpp
+  코드를 생성하고 있습니다...
+  softionics_hub_gui.vcxproj -> C:\Users\Kylehahn\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\Release\softionics_hub_gui.exe

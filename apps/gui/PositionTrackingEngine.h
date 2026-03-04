@@ -30,6 +30,8 @@ private:
     std::vector<double> params_;
     std::vector<float> sampleBuf_;
     qulonglong lastStatusEmitNs_ = 0;
+    qulonglong lastAlgoCallNs_ = 0;
+    qulonglong minAlgoIntervalNs_ = 0;
 };
 
 #endif

@@ -4,7 +4,7 @@ chcp 65001 >nul
 
 set CFG=Release
 set BUILD_DIR=%~dp0build_gui
-set QT_KIT=C:\Qt\6.10.1\msvc2022_64
+set QT_KIT=C:\Qt\6.10.2\msvc2022_64
 
 if not "%1"=="" set CFG=%1
 if not "%2"=="" set BUILD_DIR=%2

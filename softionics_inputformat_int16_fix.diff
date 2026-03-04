@@ -1,0 +1,11 @@
+diff --git a/core/include/hub/Parser.h b/core/include/hub/Parser.h
+index cb347a4..30a27d7 100644
+--- a/core/include/hub/Parser.h
++++ b/core/include/hub/Parser.h
+@@ -17,6 +17,7 @@ enum class InputFormat : int {
+     Auto    = 0,
+     Decimal = 1,
+     Hex     = 2,
+     Binary  = 3,
++    Int16   = 4,
+ };

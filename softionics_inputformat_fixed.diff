@@ -1,0 +1,412 @@
+diff --git a/apps/gui/BleWorker.cpp b/apps/gui/BleWorker.cpp
+index 46dd7d8..737c895 100644
+--- a/apps/gui/BleWorker.cpp
++++ b/apps/gui/BleWorker.cpp
+@@ -61,6 +61,31 @@ void BleWorker::startAuto(QString prefix) {
+     startScanning();
+ }
+ 
++void BleWorker::setInputFormat(int fmt) {
++    // Valid values: 0..3 (hub::InputFormat)
++    if (fmt < 0 || fmt > 3) fmt = 0;
++    inputFmt_.store(fmt);
++
++    // Changing the parsing format can change the channel count and should
++    // reset the pipeline state so it can re-initialize cleanly.
++    n_ch_.store(0);
++    {
++        QMutexLocker lk(&pipeMu_);
++        pipe_.reset();
++        lastBiasHas_ = false;
++        lastBiasCapturing_ = false;
++        resetStreamStatsLocked();
++    }
++    emit biasStateChanged(false, false);
++    emit streamStats(0, 0.0, 0, 0.0);
++
++    const char* name = "Auto";
++    if (fmt == 1) name = "Decimal";
++    else if (fmt == 2) name = "Hex";
++    else if (fmt == 3) name = "Binary";
++    emit statusText(QString("Input format: %1").arg(name));
++}
++
+ void BleWorker::startScanning() {
+     if (scanning_.exchange(true)) return;
+     if (scanThread_.joinable()) scanThread_.join();
+@@ -459,7 +484,7 @@ void BleWorker::processChunk(std::string_view chunk) {
+     auto lines = framer_.push(chunk);
+ 
+     for (auto& line : lines) {
+-        auto v = parser_.parse_line(line);
++        auto v = parser_.parse_line(line, (hub::InputFormat)inputFmt_.load());
+         if (!v) { bad_.fetch_add(1); continue; }
+ 
+         size_t n = v->size();
+diff --git a/apps/gui/BleWorker.h b/apps/gui/BleWorker.h
+index b86860d..0545fac 100644
+--- a/apps/gui/BleWorker.h
++++ b/apps/gui/BleWorker.h
+@@ -49,6 +49,10 @@ public slots:
+     void connectToIndex(int index);
+     void disconnectDevice();
+ 
++    // Serial input parsing mode.
++    // 0 Auto, 1 Decimal, 2 Hex, 3 Binary  (see hub::InputFormat)
++    void setInputFormat(int fmt);
++
+     void setPipelineConfig(hub::PipelineConfig cfg);
+     void startBiasCapture(int frames);
+ 
+@@ -121,6 +125,8 @@ private:
+     hub::LineFramer framer_;
+     hub::CsvFloatParser parser_;
+ 
++    std::atomic<int> inputFmt_{0}; // hub::InputFormat
++
+     hub::Pipeline pipe_;
+     hub::PipelineConfig cfg_;
+     QMutex pipeMu_;
+diff --git a/apps/gui/MainWindow.cpp b/apps/gui/MainWindow.cpp
+index 55a887c..0fb5df9 100644
+--- a/apps/gui/MainWindow.cpp
++++ b/apps/gui/MainWindow.cpp
+@@ -14,6 +14,8 @@
+ #include <QStyleOptionViewItem>
+ #include <QColor>
+ #include <QBrush>
++#include <QToolButton>
++#include <QButtonGroup>
+ 
+ #include <algorithm>
+ #include <cmath>
+@@ -231,6 +233,43 @@ void MainWindow::buildUi() {
+         centerLine_->setPen(pen);
+     }
+ 
++    // --- Serial input format toggle (AUTO / DEC / HEX / BIN) ---
++    // 센서가 HEX/BIN 등으로 들어오는 경우를 위해, 그래프 위에 작은 토글을 둔다.
++    auto* fmtRow = new QWidget(chartPanel);
++    fmtRow->setMaximumHeight(28);
++    auto* fmtL = new QHBoxLayout(fmtRow);
++    fmtL->setContentsMargins(0, 0, 0, 0);
++    fmtL->setSpacing(6);
++    fmtL->addWidget(new QLabel("Input", fmtRow));
++
++    auto* fmtGroup = new QButtonGroup(fmtRow);
++    fmtGroup->setExclusive(true);
++
++    auto makeBtn = [&](const QString& text, int id) {
++        auto* b = new QToolButton(fmtRow);
++        b->setText(text);
++        b->setCheckable(true);
++        b->setAutoRaise(true);
++        b->setToolButtonStyle(Qt::ToolButtonTextOnly);
++        fmtGroup->addButton(b, id);
++        fmtL->addWidget(b);
++        return b;
++    };
++
++    auto* bAuto = makeBtn("AUTO", 0);
++    makeBtn("DEC", 1);
++    makeBtn("HEX", 2);
++    makeBtn("BIN", 3);
++    bAuto->setChecked(true);
++
++    fmtL->addStretch(1);
++    chartL->addWidget(fmtRow, 0);
++
++    connect(fmtGroup, &QButtonGroup::idClicked, this, [this](int id) {
++        if (!worker_) return;
++        QMetaObject::invokeMethod(worker_, "setInputFormat", Qt::QueuedConnection, Q_ARG(int, id));
++    });
++
+     chartView_ = new QChartView(chart_, chartPanel);
+     chartView_->setRenderHint(QPainter::Antialiasing, true);
+     chartL->addWidget(chartView_, 1);
+diff --git a/core/include/hub/Parser.h b/core/include/hub/Parser.h
+index 6a63e1e..9f0abf3 100644
+--- a/core/include/hub/Parser.h
++++ b/core/include/hub/Parser.h
+@@ -5,9 +5,27 @@
+ 
+ namespace hub {
+ 
++// Input format for Serial / CSV-like streams.
++//
++// - Auto: try Decimal first; if it fails, attempt to detect and decode Hex/Binary.
++// - Decimal: CSV / whitespace-separated decimal floats or ints.
++// - Hex: tokens interpreted as hexadecimal integers (e.g. "0x1A", "1A").
++// - Binary: tokens interpreted as binary integers (e.g. "0b1010", "1010").
++enum class InputFormat : int {
++    Auto    = 0,
++    Decimal = 1,
++    Hex     = 2,
++    Binary  = 3,
++};
++
+ class CsvFloatParser {
+ public:
+-    std::optional<std::vector<float>> parse_line(std::string_view line) const;
++    // Backwards compatible: defaults to Auto.
++    std::optional<std::vector<float>> parse_line(std::string_view line) const {
++        return parse_line(line, InputFormat::Auto);
++    }
++
++    std::optional<std::vector<float>> parse_line(std::string_view line, InputFormat fmt) const;
+ };
+ 
+ }
+diff --git a/core/src/Parser.cpp b/core/src/Parser.cpp
+index 5216f8b..38e14bf 100644
+--- a/core/src/Parser.cpp
++++ b/core/src/Parser.cpp
+@@ -1,5 +1,9 @@
+ #include "hub/Parser.h"
++#include <cctype>
+ #include <cstdlib>
++#include <string>
++
++#include <algorithm>
+ 
+ namespace hub {
+ 
+@@ -11,7 +15,21 @@ static inline bool is_number_start(char c) {
+     return (c >= '0' && c <= '9') || c == '+' || c == '-' || c == '.';
+ }
+ 
+-std::optional<std::vector<float>> CsvFloatParser::parse_line(std::string_view line) const {
++static inline bool is_sep(char c) {
++    return c == ',' || c == ';' || c == '|' || c == ' ' || c == '\t';
++}
++
++static inline bool is_hex_digit(char c) {
++    return (c >= '0' && c <= '9') ||
++           (c >= 'a' && c <= 'f') ||
++           (c >= 'A' && c <= 'F');
++}
++
++static inline bool is_bin_digit(char c) {
++    return c == '0' || c == '1';
++}
++
++static std::optional<std::vector<float>> parse_decimal_impl(std::string_view line) {
+     const char* p = line.data();
+     const char* e = p + line.size();
+ 
+@@ -63,4 +81,215 @@ std::optional<std::vector<float>> CsvFloatParser::parse_line(std::string_view li
+     return vals;
+ }
+ 
++static void split_tokens(std::string_view line, std::vector<std::string_view>& out) {
++    out.clear();
++    const char* b = line.data();
++    const char* e = b + line.size();
++
++    const char* p = b;
++    for (;;) {
++        while (p < e && is_sep(*p)) ++p;
++        if (p >= e) break;
++        const char* s = p;
++        while (p < e && !is_sep(*p)) ++p;
++        const char* t = p;
++        if (t > s) out.emplace_back(s, (size_t)(t - s));
++    }
++}
++
++static std::optional<std::vector<float>> parse_hex_impl(std::string_view line) {
++    std::vector<std::string_view> toks;
++    toks.reserve(64);
++    split_tokens(line, toks);
++    if (toks.empty()) return std::nullopt;
++
++    std::vector<float> vals;
++    vals.reserve(toks.size());
++
++    for (auto tsv : toks) {
++        if (tsv.empty()) continue;
++
++        // Trim surrounding whitespace (defensive; split_tokens should already remove it)
++        while (!tsv.empty() && (tsv.front() == ' ' || tsv.front() == '\t')) tsv.remove_prefix(1);
++        while (!tsv.empty() && (tsv.back() == ' ' || tsv.back() == '\t')) tsv.remove_suffix(1);
++        if (tsv.empty()) continue;
++
++        // Optional 0x/0X prefix.
++        if (tsv.size() >= 2 && tsv[0] == '0' && (tsv[1] == 'x' || tsv[1] == 'X')) {
++            tsv.remove_prefix(2);
++        }
++        if (tsv.empty()) return std::nullopt;
++
++        // Allow a leading + sign. (No negative hex in Auto mode without explicit '-')
++        if (tsv.front() == '+') {
++            tsv.remove_prefix(1);
++            if (tsv.empty()) return std::nullopt;
++        }
++
++        // Validate: hex digits only.
++        for (char c : tsv) {
++            if (!is_hex_digit(c)) return std::nullopt;
++        }
++
++        std::string tok(tsv);
++        char* endp = nullptr;
++        unsigned long v = std::strtoul(tok.c_str(), &endp, 16);
++        if (!endp || endp == tok.c_str() || *endp != '\0') return std::nullopt;
++        vals.push_back((float)v);
++    }
++
++    if (vals.empty()) return std::nullopt;
++    return vals;
++}
++
++static std::optional<std::vector<float>> parse_binary_impl(std::string_view line) {
++    std::vector<std::string_view> toks;
++    toks.reserve(64);
++    split_tokens(line, toks);
++    if (toks.empty()) return std::nullopt;
++
++    std::vector<float> vals;
++    vals.reserve(toks.size());
++
++    for (auto tsv : toks) {
++        if (tsv.empty()) continue;
++
++        // Optional 0b/0B prefix.
++        if (tsv.size() >= 2 && tsv[0] == '0' && (tsv[1] == 'b' || tsv[1] == 'B')) {
++            tsv.remove_prefix(2);
++        }
++        if (tsv.empty()) return std::nullopt;
++
++        // Validate: binary digits only.
++        for (char c : tsv) {
++            if (!is_bin_digit(c)) return std::nullopt;
++        }
++
++        std::string tok(tsv);
++        char* endp = nullptr;
++        unsigned long v = std::strtoul(tok.c_str(), &endp, 2);
++        if (!endp || endp == tok.c_str() || *endp != '\0') return std::nullopt;
++        vals.push_back((float)v);
++    }
++
++    if (vals.empty()) return std::nullopt;
++    return vals;
++}
++
++static bool looks_like_hex(std::string_view line) {
++    // Heuristics:
++    // - Any 0x/0X prefix
++    // - Any A..F/a..f letter
++    // - Any standalone 'x'/'X'
++    bool has_hex_letter = false;
++    bool has_0x = false;
++    for (size_t i = 0; i < line.size(); ++i) {
++        char c = line[i];
++        if ((c == 'x' || c == 'X') && i > 0 && line[i - 1] == '0') has_0x = true;
++        if ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) has_hex_letter = true;
++    }
++    return has_0x || has_hex_letter;
++}
++
++static bool looks_like_binary(std::string_view line) {
++    // Heuristics:
++    // - Any 0b/0B prefix
++    // - Or tokens that look like a bit-field (only 0/1) with a "byte-ish" length.
++    bool has_0b = false;
++    for (size_t i = 0; i < line.size(); ++i) {
++        char c = line[i];
++        if ((c == 'b' || c == 'B') && i > 0 && line[i - 1] == '0') {
++            has_0b = true;
++            break;
++        }
++    }
++    if (has_0b) return true;
++
++    std::vector<std::string_view> toks;
++    toks.reserve(64);
++    split_tokens(line, toks);
++    for (auto t : toks) {
++        // Length threshold to avoid mis-detecting normal decimals like "10,11".
++        // Typical binary dumps are 8/16/32 bits.
++        if (t.size() < 8) continue;
++        bool ok = true;
++        for (char c : t) {
++            if (!is_bin_digit(c)) { ok = false; break; }
++        }
++        if (ok) return true;
++    }
++    return false;
++}
++
++static std::optional<std::vector<float>> extract_decimal_numbers(std::string_view line) {
++    // Fallback for streams that include labels or wrappers.
++    // Example: "ax: 1.0, ay: 2.0".
++    const char* b = line.data();
++    const char* e = b + line.size();
++    const char* p = b;
++
++    std::vector<float> vals;
++    vals.reserve(64);
++
++    while (p < e) {
++        // Find next number-like start.
++        while (p < e && !is_number_start(*p)) ++p;
++        if (p >= e) break;
++
++        // Guard: don't treat "0x" or "0b" as a decimal 0.
++        if (*p == '0' && (p + 1) < e && (p[1] == 'x' || p[1] == 'X' || p[1] == 'b' || p[1] == 'B')) {
++            p += 2;
++            continue;
++        }
++
++        char* endp = nullptr;
++        float v = std::strtof(p, &endp);
++        if (!endp || endp == p) {
++            ++p;
++            continue;
++        }
++
++        vals.push_back(v);
++        p = endp;
++    }
++
++    if (vals.empty()) return std::nullopt;
++    return vals;
++}
++
++std::optional<std::vector<float>> CsvFloatParser::parse_line(std::string_view line, InputFormat fmt) const {
++    if (fmt == InputFormat::Decimal) {
++        // Decimal-only strict mode.
++        if (auto v = parse_decimal_impl(line)) return v;
++        return extract_decimal_numbers(line);
++    }
++
++    if (fmt == InputFormat::Hex) {
++        if (auto v = parse_hex_impl(line)) return v;
++        return std::nullopt;
++    }
++
++    if (fmt == InputFormat::Binary) {
++        if (auto v = parse_binary_impl(line)) return v;
++        return std::nullopt;
++    }
++
++    // Auto
++    // If it strongly looks like a bit-field, prefer decoding as binary.
++    if (looks_like_binary(line)) {
++        if (auto v = parse_binary_impl(line)) return v;
++    }
++
++    // If it looks like hex, try hex before decimal.
++    if (looks_like_hex(line)) {
++        if (auto v = parse_hex_impl(line)) return v;
++    }
++
++    // Default / most common.
++    if (auto v = parse_decimal_impl(line)) return v;
++
++    // As a last resort, try to salvage decimal numbers embedded in text.
++    return extract_decimal_numbers(line);
++}
++
+ }

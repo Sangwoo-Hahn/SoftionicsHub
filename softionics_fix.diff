@@ -1,0 +1,171 @@
+--- a/apps/gui/BleWorker.cpp
++++ b/apps/gui/BleWorker.cpp
+@@ -4,6 +4,7 @@
+ #include <cstring>
+ #include <QByteArray>
+ #include <QMetaObject>
++#include <QThread>
+ 
+ static inline uint64_t now_ns() {
+     using namespace std::chrono;
+@@ -162,19 +163,55 @@
+ 
+     serialPort_ = portName;
+ 
+-    serial_->setPortName(portName);
+-    serial_->setBaudRate(QSerialPort::Baud115200);
+-    serial_->setDataBits(QSerialPort::Data8);
+-    serial_->setParity(QSerialPort::NoParity);
+-    serial_->setStopBits(QSerialPort::OneStop);
+-    serial_->setFlowControl(QSerialPort::NoFlowControl);
++    auto configure = [&]() {
++        serial_->setPortName(portName);
++        serial_->setBaudRate(QSerialPort::Baud115200);
++        serial_->setDataBits(QSerialPort::Data8);
++        serial_->setParity(QSerialPort::NoParity);
++        serial_->setStopBits(QSerialPort::OneStop);
++        serial_->setFlowControl(QSerialPort::NoFlowControl);
++        serial_->setReadBufferSize(256 * 1024);
++    };
++
++    configure();
++
++    QString lastErr;
++    bool opened = false;
++    for (int attempt = 0; attempt < 8; ++attempt) {
++        if (serial_->isOpen()) serial_->close();
++
++        opened = serial_->open(QIODevice::ReadWrite);
++        if (opened) break;
++
++        lastErr = serial_->errorString();
++
++        const auto e = serial_->error();
++        if (e == QSerialPort::PermissionError ||
++            e == QSerialPort::ResourceError ||
++            e == QSerialPort::OpenError ||
++            e == QSerialPort::DeviceNotFoundError) {
++            QThread::msleep(120);
++            continue;
++        }
+ 
+-    if (!serial_->open(QIODevice::ReadOnly)) {
+-        emit statusText(QString("Connect failed: Serial open: %1").arg(serial_->errorString()));
++        break;
++    }
++
++    if (!opened) {
++        emit statusText(QString("Connect failed: Serial open: %1").arg(lastErr));
+         serialPort_.clear();
+         return;
+     }
+ 
++    serial_->clear(QSerialPort::AllDirections);
++
++    serial_->setDataTerminalReady(false);
++    serial_->setRequestToSend(false);
++    QThread::msleep(30);
++    serial_->setDataTerminalReady(true);
++    serial_->setRequestToSend(true);
++    QThread::msleep(30);
++
+     serialSynced_.store(false);
+     framer_.clear();
+     stream_t0_ns_.store(now_ns());
+
+--- a/core/src/model/PF_LA_znotfixed_16x1.cpp
++++ b/core/src/model/PF_LA_znotfixed_16x1.cpp
+@@ -11,7 +11,7 @@
+     , kprime_(-2.663)
+     , alpha_(1.25)
+     , z0_(2.0)
+-    , P_(900)
++    , P_(400)
+     , ess_ratio_(0.30)
+     , respawn_ratio_move_(0.05)
+     , pos_noise_xy_move_(1.8)
+@@ -83,7 +83,7 @@
+         hub::pt::ParamDesc{"kprime", "kprime", -50.0, 50.0, -2.663, 0.001, 4, false},
+         hub::pt::ParamDesc{"alpha", "alpha", 0.1, 5.0, 1.25, 0.001, 4, false},
+         hub::pt::ParamDesc{"z0", "z0", 0.0, 50.0, 2.0, 0.01, 3, false},
+-        hub::pt::ParamDesc{"P", "particles", 100.0, 2000.0, 900.0, 10.0, 0, false},
++        hub::pt::ParamDesc{"P", "particles", 100.0, 2000.0, 400.0, 10.0, 0, false},
+         hub::pt::ParamDesc{"ess_ratio", "ess_ratio", 0.05, 0.95, 0.30, 0.01, 2, false},
+         hub::pt::ParamDesc{"respawn_ratio_move", "respawn_ratio_move", 0.0, 0.30, 0.05, 0.01, 2, false},
+         hub::pt::ParamDesc{"pos_noise_xy_move", "pos_noise_xy_move", 0.0, 20.0, 1.8, 0.01, 2, false},
+@@ -122,7 +122,7 @@
+         -2.663,
+         1.25,
+         2.0,
+-        900.0,
++        400.0,
+         0.30,
+         0.05,
+         1.8,
+@@ -694,60 +694,15 @@
+     double a00, double a01, double a02,
+     double a11, double a12,
+     double a22) {
+-    double p1 = a01 * a01 + a02 * a02 + a12 * a12;
+-    if (p1 <= 0.0) {
+-        double lmin = std::min({a00, a11, a22});
+-        double lmax = std::max({a00, a11, a22});
+-        lmin = std::max(lmin, 1e-18);
+-        return lmax / lmin;
+-    }
+-
+-    double q = (a00 + a11 + a22) / 3.0;
+-
+-    double b00 = a00 - q;
+-    double b11 = a11 - q;
+-    double b22 = a22 - q;
+-
+-    double p2 = b00 * b00 + b11 * b11 + b22 * b22 + 2.0 * p1;
+-    double p = std::sqrt(std::max(p2 / 6.0, 0.0));
+-    if (p < 1e-30) {
+-        double lmin = std::min({a00, a11, a22});
+-        double lmax = std::max({a00, a11, a22});
+-        lmin = std::max(lmin, 1e-18);
+-        return lmax / lmin;
+-    }
+-
+-    double invp = 1.0 / p;
+-
+-    double c00 = b00 * invp;
+-    double c01 = a01 * invp;
+-    double c02 = a02 * invp;
+-    double c11 = b11 * invp;
+-    double c12 = a12 * invp;
+-    double c22 = b22 * invp;
+-
+-    double detB =
+-        c00 * (c11 * c22 - c12 * c12)
+-        - c01 * (c01 * c22 - c12 * c02)
+-        + c02 * (c01 * c12 - c11 * c02);
+-
+-    double r = 0.5 * detB;
+-    r = clamp(r, -1.0, 1.0);
+-
+-    double phi = std::acos(r) / 3.0;
+-    double two_p = 2.0 * p;
+-
+-    const double two_pi_over_3 = 2.0943951023931954923;
+-
+-    double eig1 = q + two_p * std::cos(phi);
+-    double eig3 = q + two_p * std::cos(phi + two_pi_over_3);
+-    double eig2 = 3.0 * q - eig1 - eig3;
++    double r0 = std::abs(a01) + std::abs(a02);
++    double r1 = std::abs(a01) + std::abs(a12);
++    double r2 = std::abs(a02) + std::abs(a12);
+ 
+-    double lmin = std::min({eig1, eig2, eig3});
+-    double lmax = std::max({eig1, eig2, eig3});
++    double lmax = std::max({a00 + r0, a11 + r1, a22 + r2});
++    double lmin = std::min({a00 - r0, a11 - r1, a22 - r2});
+ 
+     lmin = std::max(lmin, 1e-18);
+-    if (!std::isfinite(lmax) || lmax < 0.0) lmax = 1e-18;
++    if (!std::isfinite(lmax) || lmax < 1e-18) lmax = 1e-18;
+     return lmax / lmin;
+ }
+ 

@@ -1,0 +1,20 @@
+diff --git a/apps/gui/MainWindow.cpp b/apps/gui/MainWindow.cpp
+index 1111111..2222222 100644
+--- a/apps/gui/MainWindow.cpp
++++ b/apps/gui/MainWindow.cpp
+@@ -726,6 +726,7 @@ void MainWindow::onScanUpdated(QVector<DeviceInfo> devices) {
+
+     updateDeviceListDecor();
+
++}
+
+ void MainWindow::onFftControlsChanged() {
+     // Snap N to a power-of-two so the FFT stays fast.
+@@ -904,7 +905,6 @@ void MainWindow::renderFftPlot(int n_ch) {
+         centerLine_->replace(c);
+     }
+ }
+-}
+
+ void MainWindow::updateDeviceListDecor() {
+     for (int i = 0; i < list_->count(); ++i) {

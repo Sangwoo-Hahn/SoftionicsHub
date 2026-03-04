@@ -7,6 +7,7 @@
 #include <QVector>
 #include <QList>
 #include <QPointF>
+#include <QElapsedTimer>
 
 #include <QListWidget>
 #include <QLabel>
@@ -60,6 +61,8 @@ private slots:
     void onOpenPositionTracking();
     void onPlotTick();
 
+    void onFftControlsChanged();
+
 private:
     struct PendingFrame {
         double t;        // seconds on plot axis (uniform step)
@@ -76,6 +79,10 @@ private:
     void endConnecting();
 
     void rescalePlotTime(double ratio); // scale existing x coordinates
+
+    // ---- FFT view helpers ----
+    void ensureFftState(int n_ch);
+    void renderFftPlot(int n_ch);
 
 private:
     QThread workerThread_;
@@ -103,15 +110,28 @@ private:
 
     // Filters
     QCheckBox* cb_ma_ = nullptr;
-    QSpinBox*  sp_ma_ = nullptr;
+    QSpinBox*  sp_ma_ = nullptr;              // window length
+    QSpinBox*  sp_ma_order_ = nullptr;        // cascade order
 
     QCheckBox* cb_ema_ = nullptr;
-    QDoubleSpinBox* sp_alpha_ = nullptr;
+    QDoubleSpinBox* sp_alpha_ = nullptr;      // alpha
+    QSpinBox* sp_ema_order_ = nullptr;        // cascade order
 
     QCheckBox* cb_notch_ = nullptr;
     QDoubleSpinBox* sp_fs_ = nullptr;
     QDoubleSpinBox* sp_f0_ = nullptr;
     QDoubleSpinBox* sp_q_  = nullptr;
+    QSpinBox* sp_notch_order_ = nullptr;      // cascade order
+
+    QCheckBox* cb_vrc_ = nullptr;
+    QDoubleSpinBox* sp_vrc_rc_ = nullptr;     // RC product
+    QSpinBox* sp_vrc_n_ = nullptr;            // slope estimate points
+    QSpinBox* sp_vrc_order_ = nullptr;        // cascade order
+
+    // FFT "filter" (display mode)
+    QCheckBox* cb_fft_ = nullptr;
+    QSpinBox* sp_fft_n_ = nullptr;            // FFT length (power-of-two)
+    QSpinBox* sp_fft_avg_ = nullptr;          // spectra moving-average length
 
     // Bias
     QCheckBox* cb_bias_apply_ = nullptr;
@@ -154,6 +174,26 @@ private:
     QString connectingAddr_;
     QString connectingName_;
     QTimer* connectTimeout_ = nullptr;
+
+    // ---- FFT state (only used when cb_fft_ is checked) ----
+    QElapsedTimer fftClock_;
+    qint64 lastFftMs_ = 0;
+
+    int fftN_ = 1024;
+    int fftBinCount_ = 0;
+
+    size_t fftPos_ = 0;     // ring write pos [0..fftN)
+    size_t fftCount_ = 0;   // number of samples filled (<= fftN)
+    int fftCh_ = 0;
+
+    std::vector<float> fftWindow_;           // size = fftN
+    std::vector<float> fftRing_;             // size = fftN * n_ch  (frame ring: [pos][ch])
+
+    int fftAvgK_ = 1;
+    int fftAvgPos_ = 0;
+    int fftAvgCount_ = 0;
+    std::vector<float> fftAvgRing_;          // size = fftAvgK * n_ch * fftBinCount
+    std::vector<double> fftAvgSum_;          // size = n_ch * fftBinCount
 };
 
 #endif

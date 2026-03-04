@@ -8,6 +8,11 @@ void PositionTrackingEngine::setAlgorithm(QString id) {
     params_.clear();
     sampleBuf_.clear();
     lastStatusEmitNs_ = 0;
+    lastAlgoCallNs_ = 0;
+    minAlgoIntervalNs_ = 0;
+    if (algoId_.find("PF_LA_znotfixed") != std::string::npos) {
+        minAlgoIntervalNs_ = 10000000ULL;
+    }
     if (!algo_) return;
     params_ = algo_->defaults();
     algo_->set_params(params_);
@@ -34,6 +39,11 @@ void PositionTrackingEngine::onSample(qulonglong t_ns, QVector<float> x, bool, f
         }
         return;
     }
+
+    if (minAlgoIntervalNs_ > 0 && lastAlgoCallNs_ != 0 && (t_ns - lastAlgoCallNs_) < minAlgoIntervalNs_) {
+        return;
+    }
+    lastAlgoCallNs_ = t_ns;
 
     sampleBuf_.resize((size_t)x.size());
     for (int i = 0; i < x.size(); ++i) sampleBuf_[(size_t)i] = x[i];

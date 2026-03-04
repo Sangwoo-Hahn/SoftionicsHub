@@ -8,12 +8,50 @@
 #include <QVBoxLayout>
 #include <QSplitter>
 #include <QGroupBox>
+#include <QFrame>
 #include <QPainter>
 #include <QRectF>
 #include <QSizePolicy>
+#include <QResizeEvent>
 #include <QtCore/QOverload>
 #include <algorithm>
 #include <cmath>
+
+
+namespace {
+class SquareChildContainer final : public QWidget {
+public:
+    explicit SquareChildContainer(QWidget* parent = nullptr) : QWidget(parent) {
+        setContentsMargins(0, 0, 0, 0);
+    }
+
+    void setChild(QWidget* w) {
+        child_ = w;
+        if (!child_) return;
+        if (child_->parent() != this) child_->setParent(this);
+        child_->show();
+        updateChildGeometry();
+    }
+
+protected:
+    void resizeEvent(QResizeEvent* e) override {
+        QWidget::resizeEvent(e);
+        updateChildGeometry();
+    }
+
+private:
+    void updateChildGeometry() {
+        if (!child_) return;
+        const int side = std::min(width(), height());
+        const int x = (width() - side) / 2;
+        const int y = (height() - side) / 2;
+        child_->setGeometry(x, y, side, side);
+    }
+
+    QWidget* child_ = nullptr;
+};
+} // namespace
+
 
 PositionTrackingWindow::PositionTrackingWindow(BleWorker* worker, QWidget* parent)
     : QMainWindow(parent), worker_(worker) {
@@ -89,6 +127,8 @@ void PositionTrackingWindow::buildUi() {
 
     auto* split = new QSplitter(Qt::Horizontal, central);
     split->setChildrenCollapsible(false);
+    split->setHandleWidth(10);
+    split->setOpaqueResize(true);
 
     auto* plotW = new QWidget(split);
     auto* plotL = new QVBoxLayout(plotW);
@@ -120,9 +160,14 @@ void PositionTrackingWindow::buildUi() {
     cur_->attachAxis(axX_);
     cur_->attachAxis(axY_);
 
-    view_ = new QChartView(chart_, plotW);
+    auto* squareBox = new SquareChildContainer(plotW);
+    squareBox->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+
+    view_ = new QChartView(chart_, squareBox);
     view_->setRenderHint(QPainter::Antialiasing, true);
-    plotL->addWidget(view_, 1);
+    squareBox->setChild(view_);
+
+    plotL->addWidget(squareBox, 1);
 
     lbStats_ = new QLabel("waiting...", plotW);
     lbStats_->setObjectName("StatusLabel");
@@ -134,7 +179,9 @@ void PositionTrackingWindow::buildUi() {
     split->addWidget(plotW);
 
     auto* ctrlW = new QWidget(split);
-    ctrlW->setMinimumWidth(520);
+    ctrlW->setMinimumWidth(360);
+    ctrlW->setMaximumWidth(440);
+    ctrlW->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
     auto* ctrlL = new QVBoxLayout(ctrlW);
 
     auto* gSel = new QGroupBox("Model", ctrlW);
@@ -154,6 +201,9 @@ void PositionTrackingWindow::buildUi() {
 
     auto* scroll = new QScrollArea(gParams);
     scroll->setWidgetResizable(true);
+    scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
+    scroll->setFrameShape(QFrame::NoFrame);
     scroll->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
     scroll->setMinimumHeight(720);
 
@@ -226,8 +276,9 @@ void PositionTrackingWindow::buildUi() {
 
     split->addWidget(ctrlW);
 
-    split->setStretchFactor(0, 12);
-    split->setStretchFactor(1, 6);
+    split->setStretchFactor(0, 30);
+    split->setStretchFactor(1, 1);
+    split->setSizes({10000, 420});
 
     root->addWidget(split);
     setCentralWidget(central);

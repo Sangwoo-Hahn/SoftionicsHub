@@ -1,0 +1,150 @@
+CFG=Release
+PRESET=win-local-qt
+
+--------------------------------------------------
+Running: git submodule update --init --recursive
+--------------------------------------------------
+Running: cmake --preset "win-local-qt" --fresh
+Preset CMake variables:
+
+  CMAKE_BUILD_TYPE="Release"
+  CMAKE_CXX_STANDARD="17"
+  CMAKE_PREFIX_PATH="C:/Qt/6.10.2/msvc2022_64"
+  Qt6_DIR="C:/Qt/6.10.2/msvc2022_64/lib/cmake/Qt6"
+
+-- Selecting Windows SDK version 10.0.22621.0 to target Windows 10.0.26100.
+-- The C compiler identification is MSVC 19.42.34433.0
+-- The CXX compiler identification is MSVC 19.42.34433.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.42.34433/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/MSVC/14.42.34433/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Performing Test COMPILER_HAS_DEPRECATED_ATTR
+-- Performing Test COMPILER_HAS_DEPRECATED_ATTR - Failed
+-- Performing Test COMPILER_HAS_DEPRECATED
+-- Performing Test COMPILER_HAS_DEPRECATED - Success
+-- Windows Host Detected
+-- Applying definition: SIMPLEBLE_LOG_LEVEL=SIMPLEBLE_LOG_LEVEL_INFO
+-- Applying definition: SIMPLEBLE_VERSION="0.11.0"
+-- Applying definition: FMT_HEADER_ONLY
+-- Applying definition: /D_WIN32_WINNT=0x0A00
+-- Applying definition: /D_USE_MATH_DEFINES
+-- Applying private compile option: /utf-8
+-- Applying private compile option: /Gd
+-- Applying private compile option: /EHsc
+-- Applying private compile option: /WX
+-- Applying private compile option: /W1
+-- Applying definition: SIMPLEBLE_LOG_LEVEL=SIMPLEBLE_LOG_LEVEL_INFO
+-- Applying definition: SIMPLEBLE_VERSION="0.11.0"
+-- Applying definition: FMT_HEADER_ONLY
+-- Applying definition: /D_WIN32_WINNT=0x0A00
+-- Applying definition: /D_USE_MATH_DEFINES
+-- Applying private compile option: /utf-8
+-- Applying private compile option: /Gd
+-- Applying private compile option: /EHsc
+-- Applying private compile option: /WX
+-- Applying private compile option: /W1
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD
+-- Performing Test CMAKE_HAVE_LIBC_PTHREAD - Failed
+-- Looking for pthread_create in pthreads
+-- Looking for pthread_create in pthreads - not found
+-- Looking for pthread_create in pthread
+-- Looking for pthread_create in pthread - not found
+-- Found Threads: TRUE
+-- Performing Test HAVE_STDATOMIC
+-- Performing Test HAVE_STDATOMIC - Success
+-- Found WrapAtomic: TRUE
+-- Could NOT find WrapVulkanHeaders (missing: Vulkan_INCLUDE_DIR) 
+-- Could NOT find WrapVulkanHeaders (missing: Vulkan_INCLUDE_DIR) 
+-- Configuring done (6.6s)
+-- Generating done (1.1s)
+CMake Warning:
+  Manually-specified variables were not used by the project:
+
+    CMAKE_BUILD_TYPE
+
+
+-- Build files have been written to: C:/Users/sangw/OneDrive/_softionics/_Programming/2026/SoftionicsHub/build_gui
+--------------------------------------------------
+Running: cmake --build --preset "win-local-qt"
+msbuild 버전 17.12.6+db5f6012c(.NET Framework용)
+
+  Checking File Globs
+  1>Checking Build System
+  Building Custom Rule C:/Users/sangw/OneDrive/_softionics/_Programming/2026/SoftionicsHub/CMakeLists.txt
+  BruteForce_16x2.cpp
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\core\src\model\BruteForce_16x2.cpp(1,1): warning C4819: 현재 코드 페이지(949)에서 표시할 수 없는 문자가 파일에 들어 있습니다. 데이터가 손실되지 않게 하려면 해당 파일을 유니코드 형식으로 저장하십시오. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\hub_models.vcxproj]
+  Derivative2_16x5.cpp
+  Derivative_16x5.cpp
+  ExampleAlgo_16x1.cpp
+  PF_LA_zfixed_16x1.cpp
+  PF_LA_znotfixed_16x1.cpp
+  PositionTrackingRegistry.cpp
+  코드를 생성하고 있습니다...
+  hub_models.vcxproj -> C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\hub_models.dir\Release\hub_models.lib
+  Building Custom Rule C:/Users/sangw/OneDrive/_softionics/_Programming/2026/SoftionicsHub/third_party/simpleble/simpleble/CMakeLists.txt
+  Advanced.cpp
+  Adapter.cpp
+  Peripheral.cpp
+  Service.cpp
+  Characteristic.cpp
+  Descriptor.cpp
+  Backend.cpp
+  AdapterBase.cpp
+  ServiceBase.cpp
+  CharacteristicBase.cpp
+  DescriptorBase.cpp
+  Config.cpp
+  Exceptions.cpp
+  Logging.cpp
+  AdapterSafe.cpp
+  PeripheralSafe.cpp
+  AdapterWindows.cpp
+  PeripheralWindows.cpp
+  BackendWinRT.cpp
+  MtaManager.cpp
+  코드를 생성하고 있습니다...
+  컴파일하고 있습니다...
+  UsbHelper.cpp
+  BackendDongl.cpp
+  AdapterDongl.cpp
+  PeripheralDongl.cpp
+  Protocol.cpp
+  ProtocolBase.cpp
+  Wire.cpp
+  UsbHelperWindows.cpp
+  코드를 생성하고 있습니다...
+  Utils.cpp
+  Utils.cpp
+  pb_common.c
+  pb_decode.c
+  pb_encode.c
+  d2h.pb.c
+  h2d.pb.c
+  basic.pb.c
+  simpleble.pb.c
+  코드를 생성하고 있습니다...
+  simpleble.vcxproj -> C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\simpleble\Release\simpleble.lib
+  Building Custom Rule C:/Users/sangw/OneDrive/_softionics/_Programming/2026/SoftionicsHub/CMakeLists.txt
+  Framer.cpp
+  Parser.cpp
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\core\src\Parser.cpp(168,18): error C2001: 상수에 줄 바꿈 문자가 있습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\hub_core.vcxproj]
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\core\src\Parser.cpp(168,18): error C2137: 문자 상수가 비어 있습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\hub_core.vcxproj]
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\core\src\Parser.cpp(169,1): error C2015: 상수에 문자가 너무 많습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\hub_core.vcxproj]
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\core\src\Parser.cpp(170,1): error C2001: 상수에 줄 바꿈 문자가 있습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\hub_core.vcxproj]
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\core\src\Parser.cpp(170,1): error C2015: 상수에 문자가 너무 많습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\hub_core.vcxproj]
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\core\src\Parser.cpp(169,1): error C2143: 구문 오류: ';'이(가) '상수' 앞에 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\hub_core.vcxproj]
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\core\src\Parser.cpp(168,15): warning C4553: '==': 식의 결과가 사용되지 않습니다. '='을(를) 의도했습니까? [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\hub_core.vcxproj]
+C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\core\src\Parser.cpp(171,9): error C2143: 구문 오류: ')'이(가) 'if' 앞에 없습니다. [C:\Users\sangw\OneDrive\_softionics\_Programming\2026\SoftionicsHub\build_gui\hub_core.vcxproj]
+  Pipeline.cpp
+  EMA.cpp
+  MA.cpp
+  Notch60.cpp
+  Bias.cpp
+  코드를 생성하고 있습니다...

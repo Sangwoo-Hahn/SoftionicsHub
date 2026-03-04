@@ -1,0 +1,305 @@
+diff --git a/apps/gui/BleWorker.cpp b/apps/gui/BleWorker.cpp
+index 737c895..801d1b6 100644
+--- a/apps/gui/BleWorker.cpp
++++ b/apps/gui/BleWorker.cpp
+@@ -62,8 +62,8 @@ void BleWorker::startAuto(QString prefix) {
+ }
+ 
+ void BleWorker::setInputFormat(int fmt) {
+-    // Valid values: 0..3 (hub::InputFormat)
+-    if (fmt < 0 || fmt > 3) fmt = 0;
++    // Valid values: 0..4 (hub::InputFormat)
++    if (fmt < 0 || fmt > 4) fmt = 0;
+     inputFmt_.store(fmt);
+ 
+     // Changing the parsing format can change the channel count and should
+@@ -83,6 +83,7 @@ void BleWorker::setInputFormat(int fmt) {
+     if (fmt == 1) name = "Decimal";
+     else if (fmt == 2) name = "Hex";
+     else if (fmt == 3) name = "Binary";
++    else if (fmt == 4) name = "Int16";
+     emit statusText(QString("Input format: %1").arg(name));
+ }
+ 
+diff --git a/apps/gui/BleWorker.h b/apps/gui/BleWorker.h
+index 0545fac..1e220fa 100644
+--- a/apps/gui/BleWorker.h
++++ b/apps/gui/BleWorker.h
+@@ -50,7 +50,7 @@ public slots:
+     void disconnectDevice();
+ 
+     // Serial input parsing mode.
+-    // 0 Auto, 1 Decimal, 2 Hex, 3 Binary  (see hub::InputFormat)
++    // 0 Auto, 1 Decimal, 2 Hex, 3 Binary, 4 Int16  (see hub::InputFormat)
+     void setInputFormat(int fmt);
+ 
+     void setPipelineConfig(hub::PipelineConfig cfg);
+diff --git a/apps/gui/MainWindow.cpp b/apps/gui/MainWindow.cpp
+index 0fb5df9..3238744 100644
+--- a/apps/gui/MainWindow.cpp
++++ b/apps/gui/MainWindow.cpp
+@@ -233,7 +233,7 @@ void MainWindow::buildUi() {
+         centerLine_->setPen(pen);
+     }
+ 
+-    // --- Serial input format toggle (AUTO / DEC / HEX / BIN) ---
++    // --- Serial input format toggle (AUTO / DEC / HEX / BIN / I16) ---
+     // 센서가 HEX/BIN 등으로 들어오는 경우를 위해, 그래프 위에 작은 토글을 둔다.
+     auto* fmtRow = new QWidget(chartPanel);
+     fmtRow->setMaximumHeight(28);
+@@ -260,6 +260,7 @@ void MainWindow::buildUi() {
+     makeBtn("DEC", 1);
+     makeBtn("HEX", 2);
+     makeBtn("BIN", 3);
++    makeBtn("I16", 4);
+     bAuto->setChecked(true);
+ 
+     fmtL->addStretch(1);
+diff --git a/core/include/hub/Parser.h b/core/include/hub/Parser.h
+index 9f0abf3..cb347a4 100644
+--- a/core/include/hub/Parser.h
++++ b/core/include/hub/Parser.h
+@@ -11,6 +11,7 @@ namespace hub {
+ // - Decimal: CSV / whitespace-separated decimal floats or ints.
+ // - Hex: tokens interpreted as hexadecimal integers (e.g. "0x1A", "1A").
+ // - Binary: tokens interpreted as binary integers (e.g. "0b1010", "1010").
++// - Int16: interpret tokens as signed 16-bit integers (two's complement).
+ enum class InputFormat : int {
+     Auto    = 0,
+     Decimal = 1,
+diff --git a/core/src/Parser.cpp b/core/src/Parser.cpp
+index 38e14bf..5c3a9a3 100644
+--- a/core/src/Parser.cpp
++++ b/core/src/Parser.cpp
+@@ -1,6 +1,7 @@
+ #include "hub/Parser.h"
+ #include <cctype>
+ #include <cstdlib>
++#include <cstdint>
+ #include <string>
+ 
+ #include <algorithm>
+@@ -257,6 +258,210 @@ static std::optional<std::vector<float>> extract_decimal_numbers(std::string_vie
+     return vals;
+ }
+ 
++
++static inline int16_t clamp_i16(long long v) {
++    if (v < -32768LL) return (int16_t)-32768;
++    if (v >  32767LL) return (int16_t) 32767;
++    return (int16_t)v;
++}
++
++static inline int16_t u16_to_i16(unsigned long v) {
++    uint16_t u = (uint16_t)(v & 0xFFFFUL);
++    return (int16_t)u;
++}
++
++static inline bool is_dec_int_token(std::string_view t) {
++    if (t.empty()) return false;
++    size_t i = 0;
++    if (t[0] == '+' || t[0] == '-') i = 1;
++    if (i >= t.size()) return false;
++    for (; i < t.size(); ++i) {
++        char c = t[i];
++        if (c < '0' || c > '9') return false;
++    }
++    return true;
++}
++
++static std::optional<std::vector<float>> parse_int16_impl(std::string_view line) {
++    std::vector<std::string_view> toks;
++    toks.reserve(64);
++    split_tokens(line, toks);
++    if (toks.empty()) return std::nullopt;
++
++    bool any_hex_hint = false;
++    bool any_bin_hint = false;
++
++    for (auto t : toks) {
++        if (t.size() >= 2 && t[0] == '0' && (t[1] == 'x' || t[1] == 'X')) any_hex_hint = true;
++        if (t.size() >= 2 && t[0] == '0' && (t[1] == 'b' || t[1] == 'B')) any_bin_hint = true;
++
++        for (char c : t) {
++            if ((c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) any_hex_hint = true;
++        }
++
++        // A long token of only 0/1 is very likely a binary dump (avoid short tokens like "0,1").
++        if (!any_bin_hint && t.size() >= 8) {
++            bool ok = true;
++            for (char c : t) { if (!is_bin_digit(c)) { ok = false; break; } }
++            if (ok) any_bin_hint = true;
++        }
++    }
++
++    // --- Binary path (0b... or bit-strings) ---
++    if (any_bin_hint && !any_hex_hint) {
++        bool byte_stream = true;
++        std::vector<unsigned long> vals;
++        vals.reserve(toks.size());
++
++        for (auto tsv : toks) {
++            if (tsv.size() >= 2 && tsv[0] == '0' && (tsv[1] == 'b' || tsv[1] == 'B')) {
++                tsv.remove_prefix(2);
++            }
++            if (tsv.empty()) return std::nullopt;
++
++            for (char c : tsv) {
++                if (!is_bin_digit(c)) return std::nullopt;
++            }
++
++            // Byte-stream heuristic: tokens are exactly 8 bits.
++            if (tsv.size() != 8) byte_stream = false;
++
++            std::string tok(tsv);
++            char* endp = nullptr;
++            unsigned long v = std::strtoul(tok.c_str(), &endp, 2);
++            if (!endp || endp == tok.c_str() || *endp != '\0') return std::nullopt;
++            vals.push_back(v);
++        }
++
++        if (vals.empty()) return std::nullopt;
++
++        std::vector<float> out;
++
++        if (byte_stream && (vals.size() % 2 == 0) && vals.size() >= 2) {
++            // Pack little-endian byte pairs into int16.
++            out.reserve(vals.size() / 2);
++            for (size_t i = 0; i + 1 < vals.size(); i += 2) {
++                unsigned long lo = vals[i] & 0xFFUL;
++                unsigned long hi = vals[i + 1] & 0xFFUL;
++                uint16_t u = (uint16_t)((hi << 8) | lo);
++                out.push_back((float)((int16_t)u));
++            }
++        } else {
++            // Interpret each token as a 16-bit word.
++            out.reserve(vals.size());
++            for (auto v : vals) {
++                if (v > 0xFFFFUL) return std::nullopt;
++                out.push_back((float)u16_to_i16(v));
++            }
++        }
++
++        if (out.empty()) return std::nullopt;
++        return out;
++    }
++
++    // --- Hex path (0x.., A..F included) ---
++    if (any_hex_hint) {
++        bool byte_stream = true;
++        std::vector<unsigned long> vals;
++        vals.reserve(toks.size());
++
++        for (auto tsv : toks) {
++            // Optional 0x prefix.
++            if (tsv.size() >= 2 && tsv[0] == '0' && (tsv[1] == 'x' || tsv[1] == 'X')) {
++                tsv.remove_prefix(2);
++            }
++            if (tsv.empty()) return std::nullopt;
++
++            // Allow a leading + sign.
++            if (tsv.front() == '+') {
++                tsv.remove_prefix(1);
++                if (tsv.empty()) return std::nullopt;
++            }
++
++            for (char c : tsv) {
++                if (!is_hex_digit(c)) return std::nullopt;
++            }
++
++            // Byte-stream heuristic: <= 2 hex digits per token.
++            if (tsv.size() > 2) byte_stream = false;
++
++            std::string tok(tsv);
++            char* endp = nullptr;
++            unsigned long v = std::strtoul(tok.c_str(), &endp, 16);
++            if (!endp || endp == tok.c_str() || *endp != '\0') return std::nullopt;
++            vals.push_back(v);
++        }
++
++        if (vals.empty()) return std::nullopt;
++
++        std::vector<float> out;
++
++        if (byte_stream && (vals.size() % 2 == 0) && vals.size() >= 2) {
++            out.reserve(vals.size() / 2);
++            for (size_t i = 0; i + 1 < vals.size(); i += 2) {
++                unsigned long lo = vals[i] & 0xFFUL;
++                unsigned long hi = vals[i + 1] & 0xFFUL;
++                uint16_t u = (uint16_t)((hi << 8) | lo);
++                out.push_back((float)((int16_t)u));
++            }
++        } else {
++            out.reserve(vals.size());
++            for (auto v : vals) {
++                if (v > 0xFFFFUL) return std::nullopt;
++                out.push_back((float)u16_to_i16(v));
++            }
++        }
++
++        if (out.empty()) return std::nullopt;
++        return out;
++    }
++
++    // --- Decimal integers path ---
++    std::vector<float> out;
++    out.reserve(toks.size());
++
++    for (auto tsv : toks) {
++        if (tsv.empty()) continue;
++
++        if (!is_dec_int_token(tsv)) {
++            // Allow label-rich lines by falling back to scanning for decimal numbers.
++            out.clear();
++            break;
++        }
++
++        std::string tok(tsv);
++        char* endp = nullptr;
++        long long v = std::strtoll(tok.c_str(), &endp, 10);
++        if (!endp || endp == tok.c_str() || *endp != '\0') {
++            out.clear();
++            break;
++        }
++
++        // If it's a raw uint16 (0..65535), reinterpret as int16.
++        if (v >= 0 && v <= 65535LL) {
++            uint16_t u = (uint16_t)v;
++            out.push_back((float)((int16_t)u));
++        } else {
++            out.push_back((float)clamp_i16(v));
++        }
++    }
++
++    if (!out.empty()) return out;
++
++    // Fallback: extract decimal numbers embedded in text and cast/clamp to int16.
++    if (auto vf = extract_decimal_numbers(line)) {
++        std::vector<float> vals;
++        vals.reserve(vf->size());
++        for (float f : *vf) {
++            long long v = (long long)f;
++            vals.push_back((float)clamp_i16(v));
++        }
++        if (!vals.empty()) return vals;
++    }
++
++    return std::nullopt;
++}
++
+ std::optional<std::vector<float>> CsvFloatParser::parse_line(std::string_view line, InputFormat fmt) const {
+     if (fmt == InputFormat::Decimal) {
+         // Decimal-only strict mode.
+@@ -274,6 +479,12 @@ std::optional<std::vector<float>> CsvFloatParser::parse_line(std::string_view li
+         return std::nullopt;
+     }
+ 
++    if (fmt == InputFormat::Int16) {
++        if (auto v = parse_int16_impl(line)) return v;
++        return std::nullopt;
++    }
++
++
+     // Auto
+     // If it strongly looks like a bit-field, prefer decoding as binary.
+     if (looks_like_binary(line)) {

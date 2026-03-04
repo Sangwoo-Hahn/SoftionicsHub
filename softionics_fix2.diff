@@ -1,0 +1,126 @@
+diff --git a/apps/gui/PositionTrackingEngine.cpp b/apps/gui/PositionTrackingEngine.cpp
+index 21eae56..4c77ae9 100644
+--- a/apps/gui/PositionTrackingEngine.cpp
++++ b/apps/gui/PositionTrackingEngine.cpp
+@@ -8,6 +8,11 @@ void PositionTrackingEngine::setAlgorithm(QString id) {
+     params_.clear();
+     sampleBuf_.clear();
+     lastStatusEmitNs_ = 0;
++    lastAlgoCallNs_ = 0;
++    minAlgoIntervalNs_ = 0;
++    if (algoId_.find("PF_LA_znotfixed") != std::string::npos) {
++        minAlgoIntervalNs_ = 10000000ULL;
++    }
+     if (!algo_) return;
+     params_ = algo_->defaults();
+     algo_->set_params(params_);
+@@ -35,6 +40,11 @@ void PositionTrackingEngine::onSample(qulonglong t_ns, QVector<float> x, bool, f
+         return;
+     }
+ 
++    if (minAlgoIntervalNs_ > 0 && lastAlgoCallNs_ != 0 && (t_ns - lastAlgoCallNs_) < minAlgoIntervalNs_) {
++        return;
++    }
++    lastAlgoCallNs_ = t_ns;
++
+     sampleBuf_.resize((size_t)x.size());
+     for (int i = 0; i < x.size(); ++i) sampleBuf_[(size_t)i] = x[i];
+ 
+diff --git a/apps/gui/PositionTrackingEngine.h b/apps/gui/PositionTrackingEngine.h
+index e6236b6..b827eba 100644
+--- a/apps/gui/PositionTrackingEngine.h
++++ b/apps/gui/PositionTrackingEngine.h
+@@ -30,6 +30,8 @@ private:
+     std::vector<double> params_;
+     std::vector<float> sampleBuf_;
+     qulonglong lastStatusEmitNs_ = 0;
++    qulonglong lastAlgoCallNs_ = 0;
++    qulonglong minAlgoIntervalNs_ = 0;
+ };
+ 
+ #endif
+diff --git a/apps/gui/PositionTrackingWindow.cpp b/apps/gui/PositionTrackingWindow.cpp
+index 315f795..774f5f9 100644
+--- a/apps/gui/PositionTrackingWindow.cpp
++++ b/apps/gui/PositionTrackingWindow.cpp
+@@ -8,6 +8,7 @@
+ #include <QVBoxLayout>
+ #include <QSplitter>
+ #include <QGroupBox>
++#include <QFrame>
+ #include <QPainter>
+ #include <QRectF>
+ #include <QSizePolicy>
+@@ -126,6 +127,8 @@ void PositionTrackingWindow::buildUi() {
+ 
+     auto* split = new QSplitter(Qt::Horizontal, central);
+     split->setChildrenCollapsible(false);
++    split->setHandleWidth(10);
++    split->setOpaqueResize(true);
+ 
+     auto* plotW = new QWidget(split);
+     auto* plotL = new QVBoxLayout(plotW);
+@@ -176,7 +179,9 @@ void PositionTrackingWindow::buildUi() {
+     split->addWidget(plotW);
+ 
+     auto* ctrlW = new QWidget(split);
+-    ctrlW->setMinimumWidth(520);
++    ctrlW->setMinimumWidth(360);
++    ctrlW->setMaximumWidth(440);
++    ctrlW->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Expanding);
+     auto* ctrlL = new QVBoxLayout(ctrlW);
+ 
+     auto* gSel = new QGroupBox("Model", ctrlW);
+@@ -196,6 +201,9 @@ void PositionTrackingWindow::buildUi() {
+ 
+     auto* scroll = new QScrollArea(gParams);
+     scroll->setWidgetResizable(true);
++    scroll->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
++    scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
++    scroll->setFrameShape(QFrame::NoFrame);
+     scroll->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+     scroll->setMinimumHeight(720);
+ 
+@@ -268,8 +276,9 @@ void PositionTrackingWindow::buildUi() {
+ 
+     split->addWidget(ctrlW);
+ 
+-    split->setStretchFactor(0, 12);
+-    split->setStretchFactor(1, 6);
++    split->setStretchFactor(0, 30);
++    split->setStretchFactor(1, 1);
++    split->setSizes({10000, 420});
+ 
+     root->addWidget(split);
+     setCentralWidget(central);
+diff --git a/core/src/model/PF_LA_znotfixed_16x1.cpp b/core/src/model/PF_LA_znotfixed_16x1.cpp
+index 6aa34b2..1686fe3 100644
+--- a/core/src/model/PF_LA_znotfixed_16x1.cpp
++++ b/core/src/model/PF_LA_znotfixed_16x1.cpp
+@@ -11,7 +11,7 @@ PF_LA_znotfixed_16x1::PF_LA_znotfixed_16x1()
+     , kprime_(-2.663)
+     , alpha_(1.25)
+     , z0_(2.0)
+-    , P_(400)
++    , P_(250)
+     , ess_ratio_(0.30)
+     , respawn_ratio_move_(0.05)
+     , pos_noise_xy_move_(1.8)
+@@ -83,7 +83,7 @@ std::vector<hub::pt::ParamDesc> PF_LA_znotfixed_16x1::params() const {
+         hub::pt::ParamDesc{"kprime", "kprime", -50.0, 50.0, -2.663, 0.001, 4, false},
+         hub::pt::ParamDesc{"alpha", "alpha", 0.1, 5.0, 1.25, 0.001, 4, false},
+         hub::pt::ParamDesc{"z0", "z0", 0.0, 50.0, 2.0, 0.01, 3, false},
+-        hub::pt::ParamDesc{"P", "particles", 100.0, 2000.0, 400.0, 10.0, 0, false},
++        hub::pt::ParamDesc{"P", "particles", 100.0, 2000.0, 250.0, 10.0, 0, false},
+         hub::pt::ParamDesc{"ess_ratio", "ess_ratio", 0.05, 0.95, 0.30, 0.01, 2, false},
+         hub::pt::ParamDesc{"respawn_ratio_move", "respawn_ratio_move", 0.0, 0.30, 0.05, 0.01, 2, false},
+         hub::pt::ParamDesc{"pos_noise_xy_move", "pos_noise_xy_move", 0.0, 20.0, 1.8, 0.01, 2, false},
+@@ -122,7 +122,7 @@ std::vector<double> PF_LA_znotfixed_16x1::defaults() const {
+         -2.663,
+         1.25,
+         2.0,
+-        400.0,
++        250.0,
+         0.30,
+         0.05,
+         1.8,

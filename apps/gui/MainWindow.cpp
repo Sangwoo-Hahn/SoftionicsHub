@@ -14,14 +14,74 @@
 #include <QStyleOptionViewItem>
 #include <QColor>
 #include <QBrush>
+#include <QToolButton>
+#include <QButtonGroup>
 
 #include <algorithm>
 #include <cmath>
+#include <complex>
+
+#include <QSignalBlocker>
 
 static constexpr int ROLE_ADDR       = Qt::UserRole;
 static constexpr int ROLE_STATE      = Qt::UserRole + 1;   // 0 normal, 1 connected, 2 connecting
 static constexpr int ROLE_SCAN_INDEX = Qt::UserRole + 2;   // -1 pinned
 static constexpr int ROLE_NAME       = Qt::UserRole + 3;
+
+static inline int snap_pow2(int v, int min_v = 32, int max_v = 16384) {
+    if (v < min_v) v = min_v;
+    if (v > max_v) v = max_v;
+
+    int p = 1;
+    while (p < v && p < max_v) p <<= 1;
+
+    int hi = p;
+    int lo = p >> 1;
+    if (lo < min_v) lo = min_v;
+
+    // choose nearest power-of-two
+    int snapped = hi;
+    if (v - lo <= hi - v) snapped = lo;
+
+    // clamp again (safety)
+    if (snapped < min_v) snapped = min_v;
+    if (snapped > max_v) snapped = max_v;
+    return snapped;
+}
+
+static inline void fft_inplace(std::vector<std::complex<float>>& a) {
+    const size_t n = a.size();
+    if (n <= 1) return;
+
+    // bit-reversal permutation
+    for (size_t i = 1, j = 0; i < n; ++i) {
+        size_t bit = n >> 1;
+        for (; j & bit; bit >>= 1) j ^= bit;
+        j ^= bit;
+        if (i < j) std::swap(a[i], a[j]);
+    }
+
+    constexpr float PI = 3.14159265358979323846f;
+
+    for (size_t len = 2; len <= n; len <<= 1) {
+        const float ang = -2.0f * PI / (float)len;
+        const std::complex<float> wlen(std::cos(ang), std::sin(ang));
+
+        for (size_t i = 0; i < n; i += len) {
+            std::complex<float> w(1.0f, 0.0f);
+            const size_t half = len >> 1;
+
+            for (size_t j = 0; j < half; ++j) {
+                const std::complex<float> u = a[i + j];
+                const std::complex<float> v = a[i + j + half] * w;
+                a[i + j] = u + v;
+                a[i + j + half] = u - v;
+                w *= wlen;
+            }
+        }
+    }
+}
+
 
 class DeviceItemDelegate : public QStyledItemDelegate {
 public:
@@ -60,6 +120,8 @@ MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     connect(worker_, &BleWorker::streamStats, this, &MainWindow::onStreamStats);
 
     buildUi();
+
+    fftClock_.start();
 
     plotTimer_ = new QTimer(this);
     plotTimer_->setInterval(33); // 30fps redraw
@@ -171,6 +233,44 @@ void MainWindow::buildUi() {
         centerLine_->setPen(pen);
     }
 
+    // --- Serial input format toggle (AUTO / DEC / HEX / BIN / I16) ---
+    // 센서가 HEX/BIN 등으로 들어오는 경우를 위해, 그래프 위에 작은 토글을 둔다.
+    auto* fmtRow = new QWidget(chartPanel);
+    fmtRow->setMaximumHeight(28);
+    auto* fmtL = new QHBoxLayout(fmtRow);
+    fmtL->setContentsMargins(0, 0, 0, 0);
+    fmtL->setSpacing(6);
+    fmtL->addWidget(new QLabel("Input", fmtRow));
+
+    auto* fmtGroup = new QButtonGroup(fmtRow);
+    fmtGroup->setExclusive(true);
+
+    auto makeBtn = [&](const QString& text, int id) {
+        auto* b = new QToolButton(fmtRow);
+        b->setText(text);
+        b->setCheckable(true);
+        b->setAutoRaise(true);
+        b->setToolButtonStyle(Qt::ToolButtonTextOnly);
+        fmtGroup->addButton(b, id);
+        fmtL->addWidget(b);
+        return b;
+    };
+
+    auto* bAuto = makeBtn("AUTO", 0);
+    makeBtn("DEC", 1);
+    makeBtn("HEX", 2);
+    makeBtn("BIN", 3);
+    makeBtn("I16", 4);
+    bAuto->setChecked(true);
+
+    fmtL->addStretch(1);
+    chartL->addWidget(fmtRow, 0);
+
+    connect(fmtGroup, &QButtonGroup::idClicked, this, [this](int id) {
+        if (!worker_) return;
+        QMetaObject::invokeMethod(worker_, "setInputFormat", Qt::QueuedConnection, Q_ARG(int, id));
+    });
+
     chartView_ = new QChartView(chart_, chartPanel);
     chartView_->setRenderHint(QPainter::Antialiasing, true);
     chartL->addWidget(chartView_, 1);
@@ -244,33 +344,52 @@ void MainWindow::buildUi() {
     auto* gFilters = new QGroupBox("Filters", ctrlPanel);
     auto* fL = new QVBoxLayout(gFilters);
 
-    cb_ma_ = new QCheckBox("MA", gFilters);
+    // Moving Average
+    cb_ma_ = new QCheckBox("Moving Average", gFilters);
     cb_ma_->setChecked(false);
+
     sp_ma_ = new QSpinBox(gFilters);
     sp_ma_->setRange(1, 20000);
     sp_ma_->setValue(5);
 
+    sp_ma_order_ = new QSpinBox(gFilters);
+    sp_ma_order_->setRange(1, 16);
+    sp_ma_order_->setValue(1);
+
     auto* maRow = new QWidget(gFilters);
     auto* maL = new QHBoxLayout(maRow);
     maL->addWidget(cb_ma_);
+    maL->addWidget(new QLabel("N"));
     maL->addWidget(sp_ma_);
+    maL->addWidget(new QLabel("Order"));
+    maL->addWidget(sp_ma_order_);
     maL->addStretch(1);
     fL->addWidget(maRow);
 
-    cb_ema_ = new QCheckBox("EMA", gFilters);
+    // Exponential Moving Average
+    cb_ema_ = new QCheckBox("Exponential Moving Average", gFilters);
     cb_ema_->setChecked(false);
+
     sp_alpha_ = new QDoubleSpinBox(gFilters);
     sp_alpha_->setRange(0.0, 1.0);
     sp_alpha_->setDecimals(4);
     sp_alpha_->setValue(0.2);
 
+    sp_ema_order_ = new QSpinBox(gFilters);
+    sp_ema_order_->setRange(1, 16);
+    sp_ema_order_->setValue(1);
+
     auto* emaRow = new QWidget(gFilters);
     auto* emaL = new QHBoxLayout(emaRow);
     emaL->addWidget(cb_ema_);
+    emaL->addWidget(new QLabel("Alpha"));
     emaL->addWidget(sp_alpha_);
+    emaL->addWidget(new QLabel("Order"));
+    emaL->addWidget(sp_ema_order_);
     emaL->addStretch(1);
     fL->addWidget(emaRow);
 
+    // Notch
     cb_notch_ = new QCheckBox("Notch", gFilters);
     cb_notch_->setChecked(false);
 
@@ -289,6 +408,10 @@ void MainWindow::buildUi() {
     sp_q_->setDecimals(2);
     sp_q_->setValue(30.0);
 
+    sp_notch_order_ = new QSpinBox(gFilters);
+    sp_notch_order_->setRange(1, 16);
+    sp_notch_order_->setValue(1);
+
     auto* notchRow = new QWidget(gFilters);
     auto* notchL = new QHBoxLayout(notchRow);
     notchL->addWidget(cb_notch_);
@@ -298,7 +421,61 @@ void MainWindow::buildUi() {
     notchL->addWidget(sp_f0_);
     notchL->addWidget(new QLabel("Q"));
     notchL->addWidget(sp_q_);
+    notchL->addWidget(new QLabel("Order"));
+    notchL->addWidget(sp_notch_order_);
     fL->addWidget(notchRow);
+
+    // V/RC + dV/dt
+    cb_vrc_ = new QCheckBox("V/RC + dV/dt", gFilters);
+    cb_vrc_->setChecked(false);
+
+    sp_vrc_rc_ = new QDoubleSpinBox(gFilters);
+    sp_vrc_rc_->setRange(1e-6, 1e6);
+    sp_vrc_rc_->setDecimals(6);
+    sp_vrc_rc_->setValue(0.05);
+
+    sp_vrc_n_ = new QSpinBox(gFilters);
+    sp_vrc_n_->setRange(2, 2000);
+    sp_vrc_n_->setValue(5);
+
+    sp_vrc_order_ = new QSpinBox(gFilters);
+    sp_vrc_order_->setRange(1, 16);
+    sp_vrc_order_->setValue(1);
+
+    auto* vrcRow = new QWidget(gFilters);
+    auto* vrcL = new QHBoxLayout(vrcRow);
+    vrcL->addWidget(cb_vrc_);
+    vrcL->addWidget(new QLabel("RC"));
+    vrcL->addWidget(sp_vrc_rc_);
+    vrcL->addWidget(new QLabel("n"));
+    vrcL->addWidget(sp_vrc_n_);
+    vrcL->addWidget(new QLabel("Order"));
+    vrcL->addWidget(sp_vrc_order_);
+    vrcL->addStretch(1);
+    fL->addWidget(vrcRow);
+
+    // FFT (display)
+    cb_fft_ = new QCheckBox("FFT (Spectrum)", gFilters);
+    cb_fft_->setChecked(false);
+
+    sp_fft_n_ = new QSpinBox(gFilters);
+    sp_fft_n_->setRange(32, 16384);
+    sp_fft_n_->setSingleStep(32);
+    sp_fft_n_->setValue(1024);
+
+    sp_fft_avg_ = new QSpinBox(gFilters);
+    sp_fft_avg_->setRange(1, 64);
+    sp_fft_avg_->setValue(1);
+
+    auto* fftRow = new QWidget(gFilters);
+    auto* fftL = new QHBoxLayout(fftRow);
+    fftL->addWidget(cb_fft_);
+    fftL->addWidget(new QLabel("N"));
+    fftL->addWidget(sp_fft_n_);
+    fftL->addWidget(new QLabel("Order"));
+    fftL->addWidget(sp_fft_avg_);
+    fftL->addStretch(1);
+    fL->addWidget(fftRow);
 
     ctrlL->addWidget(gFilters);
 
@@ -352,14 +529,27 @@ void MainWindow::buildUi() {
 
     connect(cb_ma_, &QCheckBox::toggled, this, applyHook);
     connect(sp_ma_, QOverload<int>::of(&QSpinBox::valueChanged), this, applyHook);
+    connect(sp_ma_order_, QOverload<int>::of(&QSpinBox::valueChanged), this, applyHook);
 
     connect(cb_ema_, &QCheckBox::toggled, this, applyHook);
     connect(sp_alpha_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
+    connect(sp_ema_order_, QOverload<int>::of(&QSpinBox::valueChanged), this, applyHook);
 
     connect(cb_notch_, &QCheckBox::toggled, this, applyHook);
     connect(sp_fs_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
     connect(sp_f0_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
     connect(sp_q_,  QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
+    connect(sp_notch_order_, QOverload<int>::of(&QSpinBox::valueChanged), this, applyHook);
+
+    connect(cb_vrc_, &QCheckBox::toggled, this, applyHook);
+    connect(sp_vrc_rc_, QOverload<double>::of(&QDoubleSpinBox::valueChanged), this, applyHook);
+    connect(sp_vrc_n_, QOverload<int>::of(&QSpinBox::valueChanged), this, applyHook);
+    connect(sp_vrc_order_, QOverload<int>::of(&QSpinBox::valueChanged), this, applyHook);
+
+    // FFT (display mode)
+    connect(cb_fft_, &QCheckBox::toggled, this, &MainWindow::onFftControlsChanged);
+    connect(sp_fft_n_, QOverload<int>::of(&QSpinBox::valueChanged), this, &MainWindow::onFftControlsChanged);
+    connect(sp_fft_avg_, QOverload<int>::of(&QSpinBox::valueChanged), this, &MainWindow::onFftControlsChanged);
 
     connect(cb_bias_apply_, &QCheckBox::toggled, this, applyHook);
 
@@ -377,16 +567,25 @@ void MainWindow::buildUi() {
 
 hub::PipelineConfig MainWindow::readCfgFromUi() const {
     hub::PipelineConfig cfg;
+
     cfg.enable_ma = cb_ma_->isChecked();
     cfg.ma_win = (size_t)sp_ma_->value();
+    cfg.ma_order = (size_t)(sp_ma_order_ ? sp_ma_order_->value() : 1);
 
     cfg.enable_ema = cb_ema_->isChecked();
     cfg.ema_alpha = (float)sp_alpha_->value();
+    cfg.ema_order = (size_t)(sp_ema_order_ ? sp_ema_order_->value() : 1);
 
     cfg.enable_notch = cb_notch_->isChecked();
     cfg.fs_hz = sp_fs_->value();
     cfg.notch_f0 = sp_f0_->value();
     cfg.notch_q  = sp_q_->value();
+    cfg.notch_order = (size_t)(sp_notch_order_ ? sp_notch_order_->value() : 1);
+
+    cfg.enable_vrc = cb_vrc_ ? cb_vrc_->isChecked() : false;
+    cfg.vrc_rc = sp_vrc_rc_ ? sp_vrc_rc_->value() : 0.05;
+    cfg.vrc_n = (size_t)(sp_vrc_n_ ? sp_vrc_n_->value() : 5);
+    cfg.vrc_order = (size_t)(sp_vrc_order_ ? sp_vrc_order_->value() : 1);
 
     cfg.enable_bias = cb_bias_apply_->isChecked();
     return cfg;
@@ -417,9 +616,32 @@ void MainWindow::clearPlotData() {
 
     if (centerLine_) centerLine_->replace(QList<QPointF>());
 
-    double xwin = sp_xwin_ ? sp_xwin_->value() : 1.0;
-    if (xwin < 0.5) xwin = 0.5;
-    axX_->setRange(0.0, xwin);
+    // reset FFT state
+    lastFftMs_ = 0;
+    fftPos_ = 0;
+    fftCount_ = 0;
+    fftWindow_.clear();
+    fftRing_.clear();
+
+    fftAvgPos_ = 0;
+    fftAvgCount_ = 0;
+    fftAvgRing_.clear();
+    fftAvgSum_.clear();
+
+    const bool fftOn = (cb_fft_ && cb_fft_->isChecked());
+
+    if (fftOn) {
+        axX_->setTitleText("Frequency (Hz)");
+        axX_->setLabelFormat("%.1f");
+        axX_->setRange(0.0, plotFs_ * 0.5);
+    } else {
+        axX_->setTitleText("Time (s)");
+        axX_->setLabelFormat("%.3f");
+
+        double xwin = sp_xwin_ ? sp_xwin_->value() : 1.0;
+        if (xwin < 0.5) xwin = 0.5;
+        axX_->setRange(0.0, xwin);
+    }
 }
 
 void MainWindow::beginConnecting(const QString& addr, const QString& name) {
@@ -543,6 +765,185 @@ void MainWindow::onScanUpdated(QVector<DeviceInfo> devices) {
     }
 
     updateDeviceListDecor();
+
+}
+
+void MainWindow::onFftControlsChanged() {
+    // Snap N to a power-of-two so the FFT stays fast.
+    if (sp_fft_n_) {
+        int snapped = snap_pow2(sp_fft_n_->value());
+        if (snapped != sp_fft_n_->value()) {
+            QSignalBlocker b(sp_fft_n_);
+            sp_fft_n_->setValue(snapped);
+        }
+    }
+
+    if (sp_fft_avg_) {
+        int k = sp_fft_avg_->value();
+        if (k < 1) k = 1;
+        if (k > 64) k = 64;
+        if (k != sp_fft_avg_->value()) {
+            QSignalBlocker b(sp_fft_avg_);
+            sp_fft_avg_->setValue(k);
+        }
+    }
+
+    clearPlotData();
+}
+
+void MainWindow::ensureFftState(int n_ch) {
+    if (!cb_fft_ || !cb_fft_->isChecked()) return;
+    if (n_ch <= 0) return;
+
+    const int N = sp_fft_n_ ? snap_pow2(sp_fft_n_->value()) : 1024;
+    if (sp_fft_n_ && sp_fft_n_->value() != N) {
+        QSignalBlocker b(sp_fft_n_);
+        sp_fft_n_->setValue(N);
+    }
+
+    int K = sp_fft_avg_ ? sp_fft_avg_->value() : 1;
+    if (K < 1) K = 1;
+    if (K > 64) K = 64;
+
+    const int binCount = (N / 2) + 1;
+
+    const bool needReinit =
+        (fftCh_ != n_ch) ||
+        (fftN_ != N) ||
+        (fftBinCount_ != binCount) ||
+        (fftAvgK_ != K) ||
+        ((int)fftWindow_.size() != N) ||
+        (fftRing_.size() != (size_t)N * (size_t)n_ch) ||
+        (fftAvgRing_.size() != (size_t)K * (size_t)n_ch * (size_t)binCount) ||
+        (fftAvgSum_.size() != (size_t)n_ch * (size_t)binCount);
+
+    if (!needReinit) return;
+
+    fftCh_ = n_ch;
+    fftN_ = N;
+    fftBinCount_ = binCount;
+
+    fftPos_ = 0;
+    fftCount_ = 0;
+
+    // Hann window
+    fftWindow_.assign((size_t)N, 1.0f);
+    if (N > 1) {
+        constexpr double PI = 3.14159265358979323846;
+        for (int i = 0; i < N; ++i) {
+            const double w = 0.5 - 0.5 * std::cos(2.0 * PI * (double)i / (double)(N - 1));
+            fftWindow_[(size_t)i] = (float)w;
+        }
+    }
+
+    // Ring of recent samples: [pos][ch]
+    fftRing_.assign((size_t)N * (size_t)n_ch, 0.0f);
+
+    // Spectrum moving-average ("Order")
+    fftAvgK_ = K;
+    fftAvgPos_ = 0;
+    fftAvgCount_ = 0;
+    fftAvgRing_.assign((size_t)K * (size_t)n_ch * (size_t)binCount, 0.0f);
+    fftAvgSum_.assign((size_t)n_ch * (size_t)binCount, 0.0);
+
+    // Clear plot buffers
+    for (auto& b : buffers_) b.clear();
+    for (auto* s : series_) s->replace(QList<QPointF>());
+    if (centerLine_) centerLine_->replace(QList<QPointF>());
+}
+
+void MainWindow::renderFftPlot(int n_ch) {
+    if (n_ch <= 0) return;
+    if (!cb_fft_ || !cb_fft_->isChecked()) return;
+    if (fftN_ <= 0 || fftBinCount_ <= 0) return;
+    if (fftCount_ < (size_t)fftN_) return;
+
+    const double fs = plotFs_;
+    const double fMax = fs * 0.5;
+
+    const double xMin = 0.0;
+    const double xMax = fMax;
+    axX_->setRange(xMin, xMax);
+
+    const double yCenter = sp_ycenter_ ? sp_ycenter_->value() : 0.0;
+    const bool yAuto = cb_yauto_ ? cb_yauto_->isChecked() : true;
+
+    double maxAbs = 0.0;
+
+    std::vector<std::complex<float>> a((size_t)fftN_);
+    std::vector<float> mag((size_t)fftBinCount_);
+
+    // Oldest sample index in ring
+    const size_t start = (fftCount_ == (size_t)fftN_) ? fftPos_ : 0;
+
+    // 1) compute current spectrum for each channel, update moving-average ring/sum
+    for (int ch = 0; ch < n_ch; ++ch) {
+        for (int i = 0; i < fftN_; ++i) {
+            const size_t pos = (start + (size_t)i) % (size_t)fftN_;
+            const float v = fftRing_[pos * (size_t)n_ch + (size_t)ch];
+            a[(size_t)i] = std::complex<float>(v * fftWindow_[(size_t)i], 0.0f);
+        }
+
+        fft_inplace(a);
+
+        for (int k = 0; k < fftBinCount_; ++k) {
+            mag[(size_t)k] = std::abs(a[(size_t)k]) / (float)fftN_;
+        }
+
+        float* ringSlot = fftAvgRing_.data() + ((size_t)(fftAvgPos_ * n_ch + ch) * (size_t)fftBinCount_);
+        double* sum = fftAvgSum_.data() + ((size_t)ch * (size_t)fftBinCount_);
+
+        for (int k = 0; k < fftBinCount_; ++k) {
+            const float oldv = ringSlot[(size_t)k];
+            const float newv = mag[(size_t)k];
+            ringSlot[(size_t)k] = newv;
+            sum[(size_t)k] += (double)newv - (double)oldv;
+        }
+    }
+
+    // advance average ring
+    fftAvgPos_++;
+    if (fftAvgPos_ >= fftAvgK_) fftAvgPos_ = 0;
+    if (fftAvgCount_ < fftAvgK_) fftAvgCount_++;
+
+    // 2) render averaged spectrum to chart
+    for (int ch = 0; ch < n_ch; ++ch) {
+        const double* sum = fftAvgSum_.data() + ((size_t)ch * (size_t)fftBinCount_);
+        const double inv = 1.0 / (double)std::max(fftAvgCount_, 1);
+
+        QList<QPointF> pts;
+        pts.reserve(fftBinCount_);
+
+        for (int k = 0; k < fftBinCount_; ++k) {
+            const double f = ((double)k * fs) / (double)fftN_;
+            const double v = sum[(size_t)k] * inv;
+            pts.append(QPointF(f, v));
+
+            const double a = std::abs(v - yCenter);
+            if (a > maxAbs) maxAbs = a;
+        }
+
+        buffers_[ch] = pts;
+        series_[ch]->replace(buffers_[ch]);
+    }
+
+    double yAbs = 1.0;
+    if (yAuto) {
+        yAbs = (maxAbs > 1e-12) ? (maxAbs * 1.15) : 1.0;
+    } else {
+        double v = sp_yabs_ ? sp_yabs_->value() : 1.0;
+        if (v < 1e-12) v = 1.0;
+        yAbs = v;
+    }
+
+    axY_->setRange(yCenter - yAbs, yCenter + yAbs);
+
+    if (centerLine_) {
+        QList<QPointF> c;
+        c.append(QPointF(xMin, yCenter));
+        c.append(QPointF(xMax, yCenter));
+        centerLine_->replace(c);
+    }
 }
 
 void MainWindow::updateDeviceListDecor() {
@@ -648,9 +1049,13 @@ void MainWindow::onStreamStats(qulonglong totalSamples, double totalTimeSec, qul
         // x축 전체를 리셋하지 않고, 기존 점들 x만 스케일 보정
         // x = k*(1/oldFs) -> k*(1/newFs) => x *= oldFs/newFs
         double ratio = oldFs / newFs;
-        rescalePlotTime(ratio);
 
         sp_fs_->setValue(newFs);
+
+        // FFT 모드에서는 x축이 시간축이 아니므로(주파수축), 기존 점들을 스케일 보정하지 않고 리셋합니다.
+        if (cb_fft_ && cb_fft_->isChecked()) clearPlotData();
+        else rescalePlotTime(ratio);
+
         status_->setText(QString("Sampling rate auto-set: %1 Hz").arg((int)newFs));
     }
 }
@@ -695,6 +1100,42 @@ void MainWindow::onPlotTick() {
     if (n_ch <= 0) return;
     if (series_.size() != n_ch) rebuildPlot(n_ch);
 
+    const bool fftOn = (cb_fft_ && cb_fft_->isChecked());
+
+    if (fftOn) {
+        ensureFftState(n_ch);
+
+        // Push new samples into ring (frame ring: [pos][ch])
+        for (const auto& f : local) {
+            if ((int)f.x.size() != n_ch) continue;
+
+            if (fftRing_.size() != (size_t)fftN_ * (size_t)n_ch) continue;
+
+            for (int ch = 0; ch < n_ch; ++ch) {
+                fftRing_[fftPos_ * (size_t)n_ch + (size_t)ch] = f.x[ch];
+            }
+
+            fftPos_++;
+            if (fftPos_ >= (size_t)fftN_) fftPos_ = 0;
+            if (fftCount_ < (size_t)fftN_) fftCount_++;
+        }
+
+        // Rate-limit heavy FFT work so we don't overwhelm the UI thread
+        const qint64 ms = fftClock_.elapsed();
+        int intervalMs = 100;
+        if (fftN_ >= 8192) intervalMs = 300;
+        else if (fftN_ >= 4096) intervalMs = 200;
+        else if (fftN_ >= 2048) intervalMs = 140;
+
+        if (ms - lastFftMs_ < intervalMs) return;
+        lastFftMs_ = ms;
+
+        renderFftPlot(n_ch);
+        return;
+    }
+
+    // ---- time-domain plot ----
+
     double t_end = local.back().t;
 
     for (const auto& f : local) {
@@ -729,7 +1170,7 @@ void MainWindow::onPlotTick() {
             }
         }
         if (maxAbs < 1e-12) maxAbs = 1.0;
-        yAbs = maxAbs * 1.05;
+        yAbs = maxAbs * 1.1;
     } else {
         double v = sp_yabs_ ? sp_yabs_->value() : 1.0;
         if (v < 1e-12) v = 1.0;

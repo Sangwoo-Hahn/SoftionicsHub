@@ -4,6 +4,7 @@
 #include <cstring>
 #include <QByteArray>
 #include <QMetaObject>
+#include <QThread>
 
 static inline uint64_t now_ns() {
     using namespace std::chrono;
@@ -59,6 +60,32 @@ void BleWorker::startAuto(QString prefix) {
     }
 
     startScanning();
+}
+
+void BleWorker::setInputFormat(int fmt) {
+    // Valid values: 0..4 (hub::InputFormat)
+    if (fmt < 0 || fmt > 4) fmt = 0;
+    inputFmt_.store(fmt);
+
+    // Changing the parsing format can change the channel count and should
+    // reset the pipeline state so it can re-initialize cleanly.
+    n_ch_.store(0);
+    {
+        QMutexLocker lk(&pipeMu_);
+        pipe_.reset();
+        lastBiasHas_ = false;
+        lastBiasCapturing_ = false;
+        resetStreamStatsLocked();
+    }
+    emit biasStateChanged(false, false);
+    emit streamStats(0, 0.0, 0, 0.0);
+
+    const char* name = "Auto";
+    if (fmt == 1) name = "Decimal";
+    else if (fmt == 2) name = "Hex";
+    else if (fmt == 3) name = "Binary";
+    else if (fmt == 4) name = "Int16";
+    emit statusText(QString("Input format: %1").arg(name));
 }
 
 void BleWorker::startScanning() {
@@ -162,18 +189,54 @@ void BleWorker::serialConnect(const QString& portName) {
 
     serialPort_ = portName;
 
-    serial_->setPortName(portName);
-    serial_->setBaudRate(QSerialPort::Baud115200);
-    serial_->setDataBits(QSerialPort::Data8);
-    serial_->setParity(QSerialPort::NoParity);
-    serial_->setStopBits(QSerialPort::OneStop);
-    serial_->setFlowControl(QSerialPort::NoFlowControl);
+    auto configure = [&]() {
+        serial_->setPortName(portName);
+        serial_->setBaudRate(QSerialPort::Baud115200);
+        serial_->setDataBits(QSerialPort::Data8);
+        serial_->setParity(QSerialPort::NoParity);
+        serial_->setStopBits(QSerialPort::OneStop);
+        serial_->setFlowControl(QSerialPort::NoFlowControl);
+        serial_->setReadBufferSize(256 * 1024);
+    };
 
-    if (!serial_->open(QIODevice::ReadOnly)) {
-        emit statusText(QString("Connect failed: Serial open: %1").arg(serial_->errorString()));
+    configure();
+
+    QString lastErr;
+    bool opened = false;
+    for (int attempt = 0; attempt < 8; ++attempt) {
+        if (serial_->isOpen()) serial_->close();
+
+        opened = serial_->open(QIODevice::ReadWrite);
+        if (opened) break;
+
+        lastErr = serial_->errorString();
+
+        const auto e = serial_->error();
+        if (e == QSerialPort::PermissionError ||
+            e == QSerialPort::ResourceError ||
+            e == QSerialPort::OpenError ||
+            e == QSerialPort::DeviceNotFoundError) {
+            QThread::msleep(120);
+            continue;
+        }
+
+        break;
+    }
+
+    if (!opened) {
+        emit statusText(QString("Connect failed: Serial open: %1").arg(lastErr));
         serialPort_.clear();
         return;
     }
+
+    serial_->clear(QSerialPort::AllDirections);
+
+    serial_->setDataTerminalReady(false);
+    serial_->setRequestToSend(false);
+    QThread::msleep(30);
+    serial_->setDataTerminalReady(true);
+    serial_->setRequestToSend(true);
+    QThread::msleep(30);
 
     serialSynced_.store(false);
     framer_.clear();
@@ -459,7 +522,7 @@ void BleWorker::processChunk(std::string_view chunk) {
     auto lines = framer_.push(chunk);
 
     for (auto& line : lines) {
-        auto v = parser_.parse_line(line);
+        auto v = parser_.parse_line(line, (hub::InputFormat)inputFmt_.load());
         if (!v) { bad_.fetch_add(1); continue; }
 
         size_t n = v->size();
